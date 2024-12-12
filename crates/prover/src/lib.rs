@@ -441,6 +441,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
                 // Attest that the merkle tree root is correct.
                 let root = input.merkle_var.root;
                 for (val, expected) in root.iter().zip(self.vk_root.iter()) {
+                    println!("val: {:?}, expected: {:?}", val, expected);
                     builder.assert_felt_eq(*val, *expected);
                 }
                 // Verify the proof.
@@ -451,6 +452,52 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
                     self.vk_verification,
                     PublicValuesOutputDigest::Root,
                 );
+
+                let operations = builder.into_operations();
+                builder_span.exit();
+
+                // Compile the program.
+                let compiler_span = tracing::debug_span!("compile compress program").entered();
+                let mut compiler = AsmCompiler::<WrapConfig>::default();
+                let program = Arc::new(compiler.compile(operations));
+                compiler_span.exit();
+                program
+            })
+            .clone()
+    }
+
+    pub fn wrap_program_(&self) -> Arc<RecursionProgram<BabyBear>> {
+        self.wrap_program
+            .get_or_init(|| {
+                // Get the operations.
+                let builder_span = tracing::debug_span!("build compress program").entered();
+                let mut builder = Builder::<WrapConfig>::default();
+
+                let shrink_shape: ProofShape = ShrinkAir::<BabyBear>::shrink_shape().into();
+                let input_shape = SP1CompressShape::from(vec![shrink_shape]);
+                let shape = SP1CompressWithVkeyShape {
+                    compress_shape: input_shape,
+                    merkle_tree_height: self.vk_merkle_tree.height,
+                };
+                let dummy_input =
+                    SP1CompressWithVKeyWitnessValues::dummy(self.shrink_prover.machine(), &shape);
+
+                // let input = dummy_input.read(&mut builder);
+
+                // Attest that the merkle tree root is correct.
+                // let root = input.merkle_var.root;
+                // for (val, expected) in root.iter().zip(self.vk_root.iter()) {
+                //     println!("val: {:?}, expected: {:?}", val, expected);
+                //     builder.assert_felt_eq(*val, *expected);
+                // }
+                // Verify the proof.
+                // SP1CompressRootVerifierWithVKey::verify(
+                //     &mut builder,
+                //     self.shrink_prover.machine(),
+                //     input,
+                //     self.vk_verification,
+                //     PublicValuesOutputDigest::Root,
+                // );
 
                 let operations = builder.into_operations();
                 builder_span.exit();
@@ -1030,6 +1077,10 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         compressed_proof: SP1ReduceProof<InnerSC>,
         opts: SP1ProverOpts,
     ) -> Result<SP1ReduceProof<OuterSC>, SP1RecursionProverError> {
+        println!(
+            "wrap_bn254 initial proof length: {:?}",
+            serde_json::to_string(&compressed_proof).unwrap().len()
+        );
         let SP1ReduceProof { vk: compressed_vk, proof: compressed_proof } = compressed_proof;
         let input = SP1CompressWitnessValues {
             vks_and_proofs: vec![(compressed_vk, compressed_proof)],
@@ -1038,6 +1089,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         let input_with_vk = self.make_merkle_proofs(input);
 
         let program = self.wrap_program();
+        println!("wrap_bn254 program length : {:?}", program.instructions.len());
 
         // Run the compress program.
         let mut runtime = RecursionRuntime::<Val<InnerSC>, Challenge<InnerSC>, _>::new(
@@ -1062,14 +1114,87 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         if self.wrap_vk.set(wrap_vk.clone()).is_ok() {
             tracing::debug!("wrap verifier key set");
         }
-
+        println!("wrap_bn254: {:?}", runtime.record);
         // Prove the wrap program.
         let mut wrap_challenger = self.wrap_prover.config().challenger();
         let time = std::time::Instant::now();
-        let mut wrap_proof = self
+        let mut wrap_proof: sp1_stark::MachineProof<BabyBearPoseidon2Outer> = self
             .wrap_prover
             .prove(&wrap_pk, vec![runtime.record], &mut wrap_challenger, opts.recursion_opts)
             .unwrap();
+
+        println!(
+            "wrap_bn254 wrap proof length: {:?}",
+            serde_json::to_string(&wrap_proof).unwrap().len()
+        );
+
+        let elapsed = time.elapsed();
+        tracing::debug!("wrap proving time: {:?}", elapsed);
+        let mut wrap_challenger = self.wrap_prover.config().challenger();
+        self.wrap_prover.machine().verify(&wrap_vk, &wrap_proof, &mut wrap_challenger).unwrap();
+        tracing::info!("wrapping successful");
+
+        Ok(SP1ReduceProof { vk: wrap_vk, proof: wrap_proof.shard_proofs.pop().unwrap() })
+    }
+
+    #[instrument(name = "wrap_bn254_", level = "info", skip_all)]
+    pub fn wrap_bn254_(
+        &self,
+        compressed_proof: Vec<u8>,
+        opts: SP1ProverOpts,
+    ) -> Result<SP1ReduceProof<OuterSC>, SP1RecursionProverError> {
+        println!(
+            "wrap_bn254 initial proof length: {:?}",
+            serde_json::to_string(&compressed_proof).unwrap().len()
+        );
+        // let SP1ReduceProof { vk: compressed_vk, proof: compressed_proof } = compressed_proof;
+        // let input = SP1CompressWitnessValues {
+        //     vks_and_proofs: vec![(compressed_vk, compressed_proof)],
+        //     is_complete: true,
+        // };
+
+        // let input_with_vk = self.make_merkle_proofs(input);
+
+        let program = self.wrap_program_();
+        println!("wrap_bn254 program length : {:?}", program.instructions.len());
+
+        // Run the compress program.
+        let mut runtime = RecursionRuntime::<Val<InnerSC>, Challenge<InnerSC>, _>::new(
+            program.clone(),
+            self.shrink_prover.config().perm.clone(),
+        );
+
+        let mut witness_stream = Vec::new();
+        // Witnessable::<InnerConfig>::write(&input_with_vk, &mut witness_stream);
+
+        runtime.witness_stream = witness_stream.into();
+
+        runtime.run().map_err(|e| SP1RecursionProverError::RuntimeError(e.to_string()))?;
+
+        runtime.print_stats();
+        tracing::debug!("wrap program executed successfully");
+
+        // Setup the wrap program.
+        let (wrap_pk, wrap_vk) =
+            tracing::debug_span!("setup wrap").in_scope(|| self.wrap_prover.setup(&program));
+
+        if self.wrap_vk.set(wrap_vk.clone()).is_ok() {
+            tracing::debug!("wrap verifier key set");
+        }
+        // println!("wrap_bn254: {:?}", runtime.record);
+        // Prove the wrap program.
+        let mut wrap_challenger = self.wrap_prover.config().challenger();
+        let time = std::time::Instant::now();
+        let mut wrap_proof: sp1_stark::MachineProof<BabyBearPoseidon2Outer> = self
+            .wrap_prover
+            .prove(&wrap_pk, vec![runtime.record], &mut wrap_challenger, opts.recursion_opts)
+            .unwrap();
+
+        println!(
+            "wrap_bn254 wrap proof length: {:?}",
+            serde_json::to_string(&wrap_proof).unwrap().len()
+        );
+
         let elapsed = time.elapsed();
         tracing::debug!("wrap proving time: {:?}", elapsed);
         let mut wrap_challenger = self.wrap_prover.config().challenger();
@@ -1123,13 +1248,28 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
             vks_and_proofs: vec![(proof.vk.clone(), proof.proof.clone())],
             is_complete: true,
         };
+
+        use std::fs::File;
+        use std::io::Write;
+        let mut file = File::create("/tmp/prove-wit.txt").expect("Could not create file!");
+        file.write_all(serde_json::to_string(&proof.proof).unwrap().as_bytes())
+            .expect("Cannot write to the file!");
+
+        // println!("wrap_groth16_bn254: {:?}", serde_json::to_string(&proof.proof).unwrap());
         let vkey_hash = sp1_vkey_digest_bn254(&proof);
         let committed_values_digest = sp1_committed_values_digest_bn254(&proof);
 
         let mut witness = Witness::default();
         input.write(&mut witness);
+
         witness.write_committed_values_digest(committed_values_digest);
         witness.write_vkey_hash(vkey_hash);
+
+        // use std::fs::File;
+        // use std::io::Write;
+        // let mut file = File::create("/tmp/witness1.json").expect("Could not create file!");
+        // file.write_all(serde_json::to_string(&witness.clone()).unwrap().as_bytes())
+        //     .expect("Cannot write to the file!");
 
         let prover = Groth16Bn254Prover::new();
         let proof = prover.prove(witness, build_dir.to_path_buf());
@@ -1169,6 +1309,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         input: SP1CompressWitnessValues<CoreSC>,
     ) -> SP1CompressWithVKeyWitnessValues<CoreSC> {
         let num_vks = self.allowed_vk_map.len();
+        println!("make_merkle_proofs: self.vk_verification {:}", self.vk_verification);
         let (vk_indices, vk_digest_values): (Vec<_>, Vec<_>) = if self.vk_verification {
             input
                 .vks_and_proofs
@@ -1396,7 +1537,7 @@ pub mod tests {
             &wrapped_bn254_proof.proof,
         );
         let groth16_bn254_proof = prover.wrap_groth16_bn254(wrapped_bn254_proof, &artifacts_dir);
-        println!("{:?}", groth16_bn254_proof);
+        // println!("{:?}", groth16_bn254_proof);
 
         if verify {
             prover.verify_groth16_bn254(

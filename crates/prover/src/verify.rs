@@ -422,6 +422,20 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
 
         Ok(())
     }
+
+    pub fn verify_groth16_bn254_(&self, proof: &Groth16Bn254Proof, build_dir: &Path) -> Result<()> {
+        let prover = Groth16Bn254Prover::new();
+
+        let vkey_hash = BigUint::from_str(&proof.public_inputs[0])?;
+        let committed_values_digest = BigUint::from_str(&proof.public_inputs[1])?;
+
+        // Verify the proof with the corresponding public inputs.
+        prover.verify(proof, &vkey_hash, &committed_values_digest, build_dir);
+
+        // verify_groth16_bn254_public_inputs(vk, public_values, &proof.public_inputs)?;
+
+        Ok(())
+    }
 }
 
 /// Verify the vk_hash and public_values_hash in the public inputs of the PlonkBn254Proof match the

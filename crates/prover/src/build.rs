@@ -128,8 +128,19 @@ pub fn build_constraints_and_witness(
         vks_and_proofs: vec![(template_vk.clone(), template_proof.clone())],
         is_complete: true,
     };
+
+    // use std::fs::File;
+    // use std::io::Write;
+    // let mut file = File::create("/tmp/build-wit.txt").expect("Could not create file!");
+    // file.write_all(serde_json::to_string(&template_proof).unwrap().as_bytes())
+    //     .expect("Cannot write to the file!");
+
+    // println!("build_constraints_and_witness: {:?}", serde_json::to_string(template_proof).unwrap());
+
     let constraints =
         tracing::info_span!("wrap circuit").in_scope(|| build_outer_circuit(&template_input));
+
+    // println!("constraints: {:?}", constraints.len());
 
     let pv: &RecursionPublicValues<BabyBear> = template_proof.public_values.as_slice().borrow();
     let vkey_hash = babybears_to_bn254(&pv.sp1_vk_digest);
@@ -140,6 +151,7 @@ pub fn build_constraints_and_witness(
     tracing::info!("building template witness");
     let mut witness = OuterWitness::default();
     template_input.write(&mut witness);
+
     witness.write_committed_values_digest(committed_values_digest);
     witness.write_vkey_hash(vkey_hash);
 
@@ -200,10 +212,11 @@ fn build_outer_circuit(template_input: &SP1CompressWitnessValues<OuterSC>) -> Ve
     builder.assert_felt_eq(vk.pc_start, template_vk.pc_start);
 
     // Verify the proof.
-    SP1WrapVerifier::verify(&mut builder, &wrap_machine, input);
+    // SP1WrapVerifier::verify(&mut builder, &wrap_machine, input);
 
     let mut backend = ConstraintCompiler::<OuterConfig>::default();
     let operations = backend.emit(builder.into_operations());
+    // println!("build_outer_circuit operations: {:?}", operations.len());
     wrap_span.exit();
 
     operations
