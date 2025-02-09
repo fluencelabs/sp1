@@ -89,6 +89,22 @@ where
         Self { air, sends, receives, log_quotient_degree }
     }
 
+    /// Produces a new chip with externally set log quotient degree.
+    pub fn new_(air: A, log_quotient_degree: usize) -> Self {
+        let builder = InteractionBuilder::new(air.width(), air.width());
+        let (sends, receives) = builder.interactions();
+
+        // let mut max_constraint_degree =
+        //     get_max_constraint_degree(&air, air.preprocessed_width(), PROOF_MAX_NUM_PVS);
+
+        // if !sends.is_empty() || !receives.is_empty() {
+        //     max_constraint_degree = max_constraint_degree.max(3);
+        // }
+        // let log_quotient_degree = log2_ceil_usize(max_constraint_degree - 1);
+
+        Self { air, sends, receives, log_quotient_degree }
+    }
+
     /// Returns the number of interactions in the chip.
     #[inline]
     pub fn num_interactions(&self) -> usize {

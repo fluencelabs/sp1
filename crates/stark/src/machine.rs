@@ -359,6 +359,89 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> StarkMachine<SC, A> {
         })
     }
 
+/// Verify that a proof is complete and valid given a verifying key and a claimed digest.
+#[instrument("verify_", level = "info", skip_all)]
+#[allow(clippy::match_bool)]
+pub fn verify_(
+    &self,
+    vk: &StarkVerifyingKey<SC>,
+    proof: &MachineProof<SC>,
+    chip: &Chip<<SC as StarkGenericConfig>::Val, A>,
+    mut challenger: &mut SC::Challenger,
+) -> Result<(), MachineVerificationError<SC>>
+where
+    SC::Challenger: Clone,
+    A: for<'a> Air<VerifierConstraintFolder<'a, SC>>,
+{
+    // let contains_global_bus = self.contains_global_bus();
+
+    // Observe the preprocessed commitment.
+    // vk.observe_into(challenger);
+
+    // tracing::debug_span!("observe challenges for all shards").in_scope(|| {
+    //     proof.shard_proofs.iter().for_each(|shard_proof| {
+    //         if contains_global_bus {
+    //             challenger.observe(shard_proof.commitment.global_main_commit.clone());
+    //         }
+    //         challenger.observe_slice(&shard_proof.public_values[0..self.num_pv_elts()]);
+    //     });
+    // });
+
+    // Verify the shard proofs.
+    if proof.shard_proofs.is_empty() {
+        return Err(MachineVerificationError::EmptyProof);
+    }
+
+    // Obtain the challenges used for the global permutation argument.
+    // let global_permutation_challenges: [SC::Challenge; 2] = array::from_fn(|_| {
+    //     if contains_global_bus {
+    //         challenger.sample_ext_element()
+    //     } else {
+    //         SC::Challenge::zero()
+    //     }
+    // });
+
+    let global_permutation_challenges = [SC::Challenge::zero(); 2];
+    tracing::debug_span!("verify shard proofs").in_scope(|| {
+        // for (i, shard_proof) in proof.shard_proofs.iter().enumerate() {
+            tracing::debug_span!("verifying shard", shard = 0).in_scope(|| {
+                let shard_proof = &proof.shard_proofs[0];
+                let chips = vec![chip];
+                Verifier::verify_shard_(
+                    &self.config,
+                    vk,
+                    chips.as_slice(),
+                    &mut challenger,
+                    shard_proof,
+                    &global_permutation_challenges,
+                )
+                .map_err(MachineVerificationError::InvalidShardProof)
+            })?;
+        // }
+
+        Ok(())
+    // })?;
+    })
+
+    // // Verify the cumulative sum is 0.
+    // tracing::debug_span!("verify global cumulative sum is 0").in_scope(|| {
+    //     let sum = proof
+    //         .shard_proofs
+    //         .iter()
+    //         .map(|proof| proof.cumulative_sum(InteractionScope::Global))
+    //         .sum::<SC::Challenge>();
+
+    //     if !sum.is_zero() {
+    //         return Err(MachineVerificationError::NonZeroCumulativeSum(
+    //             InteractionScope::Global,
+    //             0,
+    //         ));
+    //     }
+
+    //     Ok(())
+    // })
+}
+
     /// Debugs the constraints of the given records.
     #[instrument("debug constraints", level = "debug", skip_all)]
     pub fn debug_constraints(

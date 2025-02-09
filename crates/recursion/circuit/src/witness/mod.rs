@@ -1,6 +1,7 @@
 mod outer;
 mod stark;
 
+use p3_baby_bear::BabyBear;
 use sp1_recursion_compiler::ir::{Builder, Ext, Felt};
 
 pub use outer::*;
@@ -11,8 +12,9 @@ use sp1_stark::{
 pub use stark::*;
 
 use crate::{
-    hash::FieldHasherVariable, stark::ShardProofVariable, BabyBearFriConfigVariable, CircuitConfig,
-    TwoAdicPcsProofVariable,
+    hash::{FieldHasher, FieldHasherVariable},
+    stark::{ProofWitnessValues, ShardProofVariable},
+    BabyBearFriConfigVariable, CircuitConfig, TwoAdicPcsProofVariable,
 };
 
 pub trait WitnessWriter<C: CircuitConfig>: Sized {
@@ -126,6 +128,26 @@ impl<C: CircuitConfig, T: Witnessable<C>> Witnessable<C> for Vec<T> {
         for x in self.iter() {
             x.write(witness);
         }
+    }
+}
+
+impl<C: CircuitConfig<F = BabyBear, EF = InnerChallenge>, SC: BabyBearFriConfigVariable<C>>
+    Witnessable<C> for ProofWitnessValues<SC>
+where
+    Com<SC>: Witnessable<C, WitnessVariable = <SC as FieldHasherVariable<C>>::DigestVariable>,
+    // This trait bound is redundant, but Rust-Analyzer is not able to infer it.
+    SC: FieldHasher<BabyBear>,
+    <SC as FieldHasher<BabyBear>>::Digest: Witnessable<C, WitnessVariable = SC::DigestVariable>,
+    OpeningProof<SC>: Witnessable<C, WitnessVariable = TwoAdicPcsProofVariable<C, SC>>,
+{
+    type WitnessVariable = ShardProofVariable<C, SC>;
+
+    fn read(&self, builder: &mut Builder<C>) -> Self::WitnessVariable {
+        self.shard_proof.read(builder)
+    }
+
+    fn write(&self, witness: &mut impl WitnessWriter<C>) {
+        self.shard_proof.write(witness);
     }
 }
 

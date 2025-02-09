@@ -21,7 +21,7 @@ pub mod verify;
 use std::{
     borrow::Borrow,
     collections::BTreeMap,
-    env,
+    default, env,
     num::NonZeroUsize,
     path::Path,
     sync::{
@@ -34,6 +34,7 @@ use std::{
 
 use lru::LruCache;
 
+use p3_uni_stark::Proof;
 use tracing::instrument;
 
 use p3_baby_bear::BabyBear;
@@ -59,6 +60,7 @@ use sp1_recursion_circuit::{
         SP1RecursiveVerifier,
     },
     merkle_tree::MerkleTree,
+    stark::{dummy_vk_and_shard_proof, ProofWitnessValues, ShardProofVariable, StarkVerifier},
     witness::Witnessable,
     WrapConfig,
 };
@@ -80,6 +82,8 @@ use sp1_stark::{
     MachineProver, SP1CoreOpts, SP1ProverOpts, ShardProof, StarkGenericConfig, StarkVerifyingKey,
     Val, Word, DIGEST_SIZE,
 };
+
+use sp1_stark::InnerChallenger;
 
 pub use types::*;
 use utils::{sp1_committed_values_digest_bn254, sp1_vkey_digest_bn254, words_to_bytes};
@@ -116,6 +120,10 @@ pub const REDUCE_BATCH_SIZE: usize = 2;
 pub type CompressAir<F> = RecursionAir<F, COMPRESS_DEGREE>;
 pub type ShrinkAir<F> = RecursionAir<F, SHRINK_DEGREE>;
 pub type WrapAir<F> = RecursionAir<F, WRAP_DEGREE>;
+
+// pub type P3Proof = p3_uni_stark::Proof<
+//     p3_uni_stark::StarkConfig<sp1_stark::InnerPcs, sp1_stark::InnerChallenge, InnerChallenger>,
+// >;
 
 /// A end-to-end prover implementation for the SP1 RISC-V zkVM.
 pub struct SP1Prover<C: SP1ProverComponents = DefaultProverComponents> {
@@ -466,23 +474,44 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
             .clone()
     }
 
-    pub fn wrap_program_(&self) -> Arc<RecursionProgram<BabyBear>> {
+    pub fn p3_stark_wrap_program(&self) -> Arc<RecursionProgram<BabyBear>> {
         self.wrap_program
             .get_or_init(|| {
                 // Get the operations.
-                let builder_span = tracing::debug_span!("build compress program").entered();
+                let builder_span = tracing::debug_span!("build p3 wrapper program").entered();
+
                 let mut builder = Builder::<WrapConfig>::default();
 
-                let shrink_shape: ProofShape = ShrinkAir::<BabyBear>::shrink_shape().into();
-                let input_shape = SP1CompressShape::from(vec![shrink_shape]);
-                let shape = SP1CompressWithVkeyShape {
-                    compress_shape: input_shape,
-                    merkle_tree_height: self.vk_merkle_tree.height,
-                };
-                let dummy_input =
-                    SP1CompressWithVKeyWitnessValues::dummy(self.shrink_prover.machine(), &shape);
+                // let shrink_shape: ProofShape = ShrinkAir::<BabyBear>::shrink_shape().into();
+                // let input_shape = SP1CompressShape::from(vec![shrink_shape]);
+                // let shape = SP1CompressWithVkeyShape {
+                //     compress_shape: input_shape,
+                //     merkle_tree_height: self.vk_merkle_tree.height,
+                // };
 
-                // let input = dummy_input.read(&mut builder);
+                let shape = ProofShape { chip_information: vec![("p3_stark".to_string(), 0)] };
+                let dummy_input = ProofWitnessValues::dummy(self.shrink_prover.machine(), &shape);
+                println!("p3_stark_wrap_program 1");
+
+                // let ShardProofVariable {
+                //     commitment,
+                //     opened_values,
+                //     opening_proof,
+                //     chip_ordering,
+                //     public_values,
+                // } = dummy_input.read(&mut builder);
+                let input = dummy_input.read(&mut builder);
+                println!("p3_stark_wrap_program 2");
+
+                // let input: sp1_recursion_circuit::machine::SP1RecursionWitnessVariable<
+                //     sp1_recursion_compiler::circuit::AsmConfig<
+                //         BabyBear,
+                //         p3_field::extension::BinomialExtensionField<BabyBear, 4>,
+                //     >,
+                //     BabyBearPoseidon2,
+                // > = input.read(&mut builder);
+                SP1RecursiveVerifier::verify_(&mut builder, self.core_prover.machine(), input);
+                println!("p3_stark_wrap_program 3");
 
                 // Attest that the merkle tree root is correct.
                 // let root = input.merkle_var.root;
@@ -497,6 +526,15 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
                 //     input,
                 //     self.vk_verification,
                 //     PublicValuesOutputDigest::Root,
+                // );
+                // let challenger = self.shrink_prover.machine().config().challenger_variable(&mut builder);
+                // StarkVerifier::verify_shard_(
+                //     &mut builder,
+                //     // vk,
+                //     self.shrink_prover.machine(),
+                //     challenger,
+                //     &input,
+                //     // global_permutation_challenges,
                 // );
 
                 let operations = builder.into_operations();
@@ -1081,12 +1119,16 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
             "wrap_bn254 initial proof length: {:?}",
             serde_json::to_string(&compressed_proof).unwrap().len()
         );
+
         let SP1ReduceProof { vk: compressed_vk, proof: compressed_proof } = compressed_proof;
+        println!("wrap_bn254 chips map {:?}", compressed_proof.chip_ordering);
+
         let input = SP1CompressWitnessValues {
             vks_and_proofs: vec![(compressed_vk, compressed_proof)],
             is_complete: true,
         };
-        let input_with_vk = self.make_merkle_proofs(input);
+        let input_with_vk: SP1CompressWithVKeyWitnessValues<BabyBearPoseidon2> =
+            self.make_merkle_proofs(input);
 
         let program = self.wrap_program();
         println!("wrap_bn254 program length : {:?}", program.instructions.len());
@@ -1140,23 +1182,43 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
     #[instrument(name = "wrap_bn254_", level = "info", skip_all)]
     pub fn wrap_bn254_(
         &self,
-        compressed_proof: Vec<u8>,
+        shard_proof: ShardProof<BabyBearPoseidon2>,
         opts: SP1ProverOpts,
     ) -> Result<SP1ReduceProof<OuterSC>, SP1RecursionProverError> {
         println!(
-            "wrap_bn254 initial proof length: {:?}",
-            serde_json::to_string(&compressed_proof).unwrap().len()
+            "wrap_bn254_ initial proof length: {:?}",
+            serde_json::to_string(&shard_proof).unwrap().len()
         );
-        // let SP1ReduceProof { vk: compressed_vk, proof: compressed_proof } = compressed_proof;
-        // let input = SP1CompressWitnessValues {
-        //     vks_and_proofs: vec![(compressed_vk, compressed_proof)],
-        //     is_complete: true,
+
+        // let shape = ProofShape { chip_information: vec![("BaseAlu".to_string(), 0)] };
+        // let shape = ProofShape {
+        //     chip_information: vec![
+        //         ("Byte".to_string(), 16),
+        //         ("MemoryProgram".to_string(), 14),
+        //         ("Program".to_string(), 14),
+        //         ("AddSub".to_string(), 4),
+        //         ("CPU".to_string(), 4),
+        //         ("MemoryLocal".to_string(), 4),
+        //     ],
         // };
 
-        // let input_with_vk = self.make_merkle_proofs(input);
+        // let machine = RiscvAir::<BabyBear>::machine(BabyBearPoseidon2::default());
+        // let (vk, dummy_proof) = dummy_vk_and_shard_proof(&machine, &shape);
 
-        let program = self.wrap_program_();
-        println!("wrap_bn254 program length : {:?}", program.instructions.len());
+        // let input =
+        //     SP1CompressWitnessValues { vks_and_proofs: vec![(vk, dummy_proof)], is_complete: true };
+
+        // let input_with_vk = self.make_merkle_proofs(input);
+        // let P3Proof { commitments, opened_values, opening_proof, degree_bits } = p3_proof;
+
+        // ShardProof { commitment, opened_values, opening_proof, chip_ordering, public_values };
+        // let shard_proof = p3_proof_to_shardproof::<BabyBearPoseidon2>(p3_proof);
+
+        let input = ProofWitnessValues { shard_proof };
+
+        let program = self.p3_stark_wrap_program();
+        // let program = self.wrap_program();
+        println!("wrap_bn254_ program length : {:?}", program.instructions.len());
 
         // Run the compress program.
         let mut runtime = RecursionRuntime::<Val<InnerSC>, Challenge<InnerSC>, _>::new(
@@ -1165,7 +1227,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         );
 
         let mut witness_stream = Vec::new();
-        // Witnessable::<InnerConfig>::write(&input_with_vk, &mut witness_stream);
+        Witnessable::<InnerConfig>::write(&input, &mut witness_stream);
 
         runtime.witness_stream = witness_stream.into();
 

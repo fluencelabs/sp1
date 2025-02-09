@@ -4855,8 +4855,7 @@ dependencies = [
 
 [[package]]
 name = "p3-air"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "p3-field",
  "p3-matrix",
@@ -4864,8 +4863,7 @@ dependencies = [
 
 [[package]]
 name = "p3-baby-bear"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "num-bigint 0.4.6",
  "p3-field",
@@ -4878,8 +4876,7 @@ dependencies = [
 
 [[package]]
 name = "p3-blake3"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "blake3",
  "p3-symmetric",
@@ -4887,8 +4884,7 @@ dependencies = [
 
 [[package]]
 name = "p3-bn254-fr"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "ff 0.13.0",
  "num-bigint 0.4.6",
@@ -4901,8 +4897,7 @@ dependencies = [
 
 [[package]]
 name = "p3-challenger"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "p3-field",
  "p3-maybe-rayon",
@@ -4914,8 +4909,7 @@ dependencies = [
 
 [[package]]
 name = "p3-commit"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "itertools 0.12.1",
  "p3-challenger",
@@ -4927,8 +4921,7 @@ dependencies = [
 
 [[package]]
 name = "p3-dft"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "p3-field",
  "p3-matrix",
@@ -4939,8 +4932,7 @@ dependencies = [
 
 [[package]]
 name = "p3-field"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "itertools 0.12.1",
  "num-bigint 0.4.6",
@@ -4952,8 +4944,7 @@ dependencies = [
 
 [[package]]
 name = "p3-fri"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "itertools 0.12.1",
  "p3-challenger",
@@ -4970,8 +4961,7 @@ dependencies = [
 
 [[package]]
 name = "p3-interpolation"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "p3-field",
  "p3-matrix",
@@ -4980,8 +4970,7 @@ dependencies = [
 
 [[package]]
 name = "p3-keccak-air"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "p3-air",
  "p3-field",
@@ -4993,8 +4982,7 @@ dependencies = [
 
 [[package]]
 name = "p3-matrix"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "itertools 0.12.1",
  "p3-field",
@@ -5007,16 +4995,14 @@ dependencies = [
 
 [[package]]
 name = "p3-maybe-rayon"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "rayon",
 ]
 
 [[package]]
 name = "p3-mds"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "itertools 0.12.1",
  "p3-dft",
@@ -5029,8 +5015,7 @@ dependencies = [
 
 [[package]]
 name = "p3-merkle-tree"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "itertools 0.12.1",
  "p3-commit",
@@ -5045,8 +5030,7 @@ dependencies = [
 
 [[package]]
 name = "p3-poseidon2"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "gcd",
  "p3-field",
@@ -5058,8 +5042,7 @@ dependencies = [
 
 [[package]]
 name = "p3-symmetric"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "itertools 0.12.1",
  "p3-field",
@@ -5068,8 +5051,7 @@ dependencies = [
 
 [[package]]
 name = "p3-uni-stark"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "itertools 0.12.1",
  "p3-air",
@@ -5086,8 +5068,7 @@ dependencies = [
 
 [[package]]
 name = "p3-util"
-version = "0.1.6-succinct"
-source = "git+https://github.com/Plonky3/Plonky3?branch=sp1-v4#33c0dcbaa58792fdeab302871801018c2e36ec92"
+version = "0.1.0"
 dependencies = [
  "serde",
 ]
@@ -6537,9 +6518,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.132"
+version = "1.0.138"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d726bfaff4b320266d395898905d0eba0345aae23b54aee3a737e260fd46db03"
+checksum = "d434192e7da787e94a6ea7e9670b26a036d0ca41e0b7efb2676dd32bae872949"
 dependencies = [
  "itoa",
  "memchr",
@@ -7104,6 +7085,7 @@ dependencies = [
  "lazy_static",
  "lru",
  "num-bigint 0.4.6",
+ "p3-air",
  "p3-baby-bear",
  "p3-bn254-fr",
  "p3-challenger",
@@ -7152,10 +7134,12 @@ dependencies = [
  "p3-merkle-tree",
  "p3-poseidon2",
  "p3-symmetric",
+ "p3-uni-stark",
  "p3-util",
  "rand 0.8.5",
  "rayon",
  "serde",
+ "serde_json",
  "sp1-core-executor",
  "sp1-core-machine",
  "sp1-derive",
@@ -7340,6 +7324,7 @@ dependencies = [
  "p3-util",
  "rayon-scan",
  "serde",
+ "serde_json",
  "sp1-derive",
  "sp1-primitives",
  "sp1-zkvm",
