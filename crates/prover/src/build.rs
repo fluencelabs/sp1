@@ -3,10 +3,7 @@ use std::{borrow::Borrow, path::PathBuf};
 use p3_baby_bear::BabyBear;
 use sp1_core_executor::SP1Context;
 use sp1_core_machine::io::SP1Stdin;
-use sp1_recursion_circuit::{
-    hash::FieldHasherVariable,
-    machine::{SP1CompressWitnessValues, SP1WrapVerifier},
-};
+use sp1_recursion_circuit::{hash::FieldHasherVariable, machine::SP1CompressWitnessValues};
 use sp1_recursion_compiler::{
     config::OuterConfig,
     constraints::{Constraint, ConstraintCompiler},

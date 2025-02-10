@@ -7324,7 +7324,6 @@ dependencies = [
  "p3-util",
  "rayon-scan",
  "serde",
- "serde_json",
  "sp1-derive",
  "sp1-primitives",
  "sp1-zkvm",
