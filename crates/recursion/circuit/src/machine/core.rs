@@ -19,7 +19,7 @@ use sp1_core_machine::{
 
 use sp1_recursion_core::air::PV_DIGEST_NUM_WORDS;
 use sp1_stark::{
-    air::{PublicValues, POSEIDON_NUM_WORDS},
+    air::{MachineAir, PublicValues, POSEIDON_NUM_WORDS},
     baby_bear_poseidon2::BabyBearPoseidon2,
     Dom, ProofShape, StarkMachine, Word,
 };
@@ -595,12 +595,30 @@ where
         }
     }
 
-    pub fn verify_(
+    pub fn verify_<A>(
         builder: &mut Builder<C>,
-        machine: &StarkMachine<SC, RiscvAir<SC::Val>>,
+        machine: &StarkMachine<SC, A>,
         shard_proof: ShardProofVariable<C, SC>,
         // input_: SP1RecursionWitnessVariable<C, SC>,
-    ) {
+    ) where
+        A: MachineAir<SC::Val>
+            + for<'a> p3_air::Air<
+                sp1_stark::GenericVerifierConstraintFolder<
+                    'a,
+                    p3_baby_bear::BabyBear,
+                    p3_field::extension::BinomialExtensionField<p3_baby_bear::BabyBear, 4>,
+                    sp1_recursion_compiler::ir::Felt<p3_baby_bear::BabyBear>,
+                    sp1_recursion_compiler::ir::Ext<
+                        p3_baby_bear::BabyBear,
+                        p3_field::extension::BinomialExtensionField<p3_baby_bear::BabyBear, 4>,
+                    >,
+                    sp1_recursion_compiler::ir::SymbolicExt<
+                        p3_baby_bear::BabyBear,
+                        p3_field::extension::BinomialExtensionField<p3_baby_bear::BabyBear, 4>,
+                    >,
+                >,
+            >,
+    {
         println!("verify_ {:?}", shard_proof.commitment.global_main_commit[0]);
         // Read input.
         // let SP1RecursionWitnessVariable {
@@ -613,7 +631,7 @@ where
         //     vk_root,
         // } = input_;
 
-        let leaf_challenger = machine.config().challenger_variable(builder);
+        let mut leaf_challenger = machine.config().challenger_variable(builder);
 
         // Initialize shard variables.
         // let mut initial_shard: Felt<_> = unsafe { MaybeUninit::zeroed().assume_init() };
@@ -628,25 +646,25 @@ where
         // let mut current_pc: Felt<_> = unsafe { MaybeUninit::zeroed().assume_init() };
 
         // Initialize memory initialization and finalization variables.
-        let mut initial_previous_init_addr_bits: [Felt<_>; 32] =
-            unsafe { MaybeUninit::zeroed().assume_init() };
-        let mut initial_previous_finalize_addr_bits: [Felt<_>; 32] =
-            unsafe { MaybeUninit::zeroed().assume_init() };
-        let mut current_init_addr_bits: [Felt<_>; 32] =
-            unsafe { MaybeUninit::zeroed().assume_init() };
-        let mut current_finalize_addr_bits: [Felt<_>; 32] =
-            unsafe { MaybeUninit::zeroed().assume_init() };
+        // let mut initial_previous_init_addr_bits: [Felt<_>; 32] =
+        //     unsafe { MaybeUninit::zeroed().assume_init() };
+        // let mut initial_previous_finalize_addr_bits: [Felt<_>; 32] =
+        //     unsafe { MaybeUninit::zeroed().assume_init() };
+        // let mut current_init_addr_bits: [Felt<_>; 32] =
+        //     unsafe { MaybeUninit::zeroed().assume_init() };
+        // let mut current_finalize_addr_bits: [Felt<_>; 32] =
+        //     unsafe { MaybeUninit::zeroed().assume_init() };
 
         // Initialize the exit code variable.
-        let mut exit_code: Felt<_> = unsafe { MaybeUninit::zeroed().assume_init() };
+        // let mut exit_code: Felt<_> = unsafe { MaybeUninit::zeroed().assume_init() };
 
         // Initialize the public values digest.
-        let mut committed_value_digest: [Word<Felt<_>>; PV_DIGEST_NUM_WORDS] =
-            array::from_fn(|_| Word(array::from_fn(|_| builder.uninit())));
+        // let mut committed_value_digest: [Word<Felt<_>>; PV_DIGEST_NUM_WORDS] =
+        //     array::from_fn(|_| Word(array::from_fn(|_| builder.uninit())));
 
         // Initialize the deferred proofs digest.
-        let mut deferred_proofs_digest: [Felt<_>; POSEIDON_NUM_WORDS] =
-            array::from_fn(|_| builder.uninit());
+        // let mut deferred_proofs_digest: [Felt<_>; POSEIDON_NUM_WORDS] =
+        //     array::from_fn(|_| builder.uninit());
 
         // Initialize the challenger variables.
         // let leaf_challenger_public_values = leaf_challenger.public_values(builder);
@@ -654,7 +672,7 @@ where
         //     initial_reconstruct_challenger.copy(builder);
 
         // Initialize the cumulative sum.
-        let mut global_cumulative_sum: Ext<_, _> = builder.eval(C::EF::zero().cons());
+        // let mut global_cumulative_sum: Ext<_, _> = builder.eval(C::EF::zero().cons());
 
         // Assert that the number of proofs is not zero.
         // assert!(!shard_proofs.is_empty());
@@ -667,13 +685,13 @@ where
 
         // for (i, shard_proof) in shard_proofs.into_iter().enumerate() {
         {
-            let contains_cpu = shard_proof.contains_cpu();
-            let contains_memory_init = shard_proof.contains_memory_init();
-            let contains_memory_finalize = shard_proof.contains_memory_finalize();
+            // let contains_cpu = shard_proof.contains_cpu();
+            // let contains_memory_init = shard_proof.contains_memory_init();
+            // let contains_memory_finalize = shard_proof.contains_memory_finalize();
 
             // Get the public values.
-            let public_values: &PublicValues<Word<Felt<_>>, Felt<_>> =
-                shard_proof.public_values.as_slice().borrow();
+            // let public_values: &PublicValues<Word<Felt<_>>, Felt<_>> =
+            //     shard_proof.public_values.as_slice().borrow();
 
             // If this is the first proof in the batch, initialize the variables.
             if i == 0 {
@@ -690,43 +708,43 @@ where
                 // current_pc = public_values.start_pc;
 
                 // Memory initialization & finalization.
-                for ((bit, pub_bit), first_bit) in current_init_addr_bits
-                    .iter_mut()
-                    .zip(public_values.previous_init_addr_bits.iter())
-                    .zip(initial_previous_init_addr_bits.iter_mut())
-                {
-                    *bit = *pub_bit;
-                    *first_bit = *pub_bit;
-                }
-                for ((bit, pub_bit), first_bit) in current_finalize_addr_bits
-                    .iter_mut()
-                    .zip(public_values.previous_finalize_addr_bits.iter())
-                    .zip(initial_previous_finalize_addr_bits.iter_mut())
-                {
-                    *bit = *pub_bit;
-                    *first_bit = *pub_bit;
-                }
+                // for ((bit, pub_bit), first_bit) in current_init_addr_bits
+                //     .iter_mut()
+                //     .zip(public_values.previous_init_addr_bits.iter())
+                //     .zip(initial_previous_init_addr_bits.iter_mut())
+                // {
+                //     *bit = *pub_bit;
+                //     *first_bit = *pub_bit;
+                // }
+                // for ((bit, pub_bit), first_bit) in current_finalize_addr_bits
+                //     .iter_mut()
+                //     .zip(public_values.previous_finalize_addr_bits.iter())
+                //     .zip(initial_previous_finalize_addr_bits.iter_mut())
+                // {
+                //     *bit = *pub_bit;
+                //     *first_bit = *pub_bit;
+                // }
 
                 // Exit code.
-                exit_code = public_values.exit_code;
+                // exit_code = public_values.exit_code;
 
                 // Committed public values digests.
-                for (word, first_word) in committed_value_digest
-                    .iter_mut()
-                    .zip_eq(public_values.committed_value_digest.iter())
-                {
-                    for (byte, first_byte) in word.0.iter_mut().zip_eq(first_word.0.iter()) {
-                        *byte = *first_byte;
-                    }
-                }
+                // for (word, first_word) in committed_value_digest
+                //     .iter_mut()
+                //     .zip_eq(public_values.committed_value_digest.iter())
+                // {
+                //     for (byte, first_byte) in word.0.iter_mut().zip_eq(first_word.0.iter()) {
+                //         *byte = *first_byte;
+                //     }
+                // }
 
                 // Deferred proofs digests.
-                for (digest, first_digest) in deferred_proofs_digest
-                    .iter_mut()
-                    .zip_eq(public_values.deferred_proofs_digest.iter())
-                {
-                    *digest = *first_digest;
-                }
+                // for (digest, first_digest) in deferred_proofs_digest
+                //     .iter_mut()
+                //     .zip_eq(public_values.deferred_proofs_digest.iter())
+                // {
+                //     *digest = *first_digest;
+                // }
 
                 // First shard constraints. We verify the validity of the `is_first_shard` boolean
                 // flag, and make assertions for that are specific to the first shard using that
@@ -774,7 +792,7 @@ where
             //
             // Do not verify the cumulative sum here, since the permutation challenge is shared
             // between all shards.
-            let mut challenger = leaf_challenger.copy(builder);
+            // let mut challenger = leaf_challenger.copy(builder);
 
             // let global_permutation_challenges =
             //     (0..2).map(|_| challenger.sample_ext(builder)).collect::<Vec<_>>();
@@ -783,7 +801,7 @@ where
                 builder,
                 // &vk,
                 machine,
-                &mut challenger,
+                &mut leaf_challenger,
                 &shard_proof,
                 // &global_permutation_challenges,
             );
@@ -847,237 +865,237 @@ where
             }
 
             // Exit code constraints.
-            {
-                // Assert that the exit code is zero (success) for all proofs.
-                builder.assert_felt_eq(exit_code, C::F::zero());
-            }
-
-            // Memory initialization & finalization constraints.
-            {
-                // Assert that the MemoryInitialize address bits match the current loop variable.
-                for (bit, current_bit) in current_init_addr_bits
-                    .iter()
-                    .zip_eq(public_values.previous_init_addr_bits.iter())
-                {
-                    builder.assert_felt_eq(*bit, *current_bit);
-                }
-
-                // Assert that the MemoryFinalize address bits match the current loop variable.
-                for (bit, current_bit) in current_finalize_addr_bits
-                    .iter()
-                    .zip_eq(public_values.previous_finalize_addr_bits.iter())
-                {
-                    builder.assert_felt_eq(*bit, *current_bit);
-                }
-
-                // Assert that if MemoryInit is not present, then the address bits are the same.
-                if !contains_memory_init {
-                    for (prev_bit, last_bit) in public_values
-                        .previous_init_addr_bits
-                        .iter()
-                        .zip_eq(public_values.last_init_addr_bits.iter())
-                    {
-                        builder.assert_felt_eq(*prev_bit, *last_bit);
-                    }
-                }
-
-                // Assert that if MemoryFinalize is not present, then the address bits are the
-                // same.
-                if !contains_memory_finalize {
-                    for (prev_bit, last_bit) in public_values
-                        .previous_finalize_addr_bits
-                        .iter()
-                        .zip_eq(public_values.last_finalize_addr_bits.iter())
-                    {
-                        builder.assert_felt_eq(*prev_bit, *last_bit);
-                    }
-                }
-
-                // Update the MemoryInitialize address bits.
-                for (bit, pub_bit) in
-                    current_init_addr_bits.iter_mut().zip(public_values.last_init_addr_bits.iter())
-                {
-                    *bit = *pub_bit;
-                }
-
-                // Update the MemoryFinalize address bits.
-                for (bit, pub_bit) in current_finalize_addr_bits
-                    .iter_mut()
-                    .zip(public_values.last_finalize_addr_bits.iter())
-                {
-                    *bit = *pub_bit;
-                }
-            }
-
-            // Digest constraints.
-            {
-                // // If `committed_value_digest` is not zero, then the current value should be equal
-                // to `public_values.committed_value_digest`.
-
-                // Set flags to indicate whether `committed_value_digest` is non-zero. The flags are
-                // given by the elements of the array, and they will be used as filters to constrain
-                // the equality.
-                let mut is_non_zero_flags = vec![];
-                for word in committed_value_digest {
-                    for byte in word {
-                        is_non_zero_flags.push(byte);
-                    }
-                }
-
-                // Using the flags, we can constrain the equality.
-                for is_non_zero in is_non_zero_flags {
-                    for (word_current, word_public) in
-                        committed_value_digest.into_iter().zip(public_values.committed_value_digest)
-                    {
-                        for (byte_current, byte_public) in word_current.into_iter().zip(word_public)
-                        {
-                            builder.assert_felt_eq(
-                                is_non_zero * (byte_current - byte_public),
-                                C::F::zero(),
-                            );
-                        }
-                    }
-                }
-
-                // If it's not a shard with "CPU", then the committed value digest shouldn't change.
-                if !contains_cpu {
-                    for (word_d, pub_word_d) in committed_value_digest
-                        .iter()
-                        .zip(public_values.committed_value_digest.iter())
-                    {
-                        for (d, pub_d) in word_d.0.iter().zip(pub_word_d.0.iter()) {
-                            builder.assert_felt_eq(*d, *pub_d);
-                        }
-                    }
-                }
-
-                // Update the committed value digest.
-                for (word_d, pub_word_d) in committed_value_digest
-                    .iter_mut()
-                    .zip(public_values.committed_value_digest.iter())
-                {
-                    for (d, pub_d) in word_d.0.iter_mut().zip(pub_word_d.0.iter()) {
-                        *d = *pub_d;
-                    }
-                }
-
-                // Update the exit code.
-                exit_code = public_values.exit_code;
-
-                // If `deferred_proofs_digest` is not zero, then the current value should be equal
-                // to `public_values.deferred_proofs_digest.
-
-                // Set a flag to indicate whether `deferred_proofs_digest` is non-zero. The flags
-                // are given by the elements of the array, and they will be used as filters to
-                // constrain the equality.
-                let mut is_non_zero_flags = vec![];
-                for element in deferred_proofs_digest {
-                    is_non_zero_flags.push(element);
-                }
-
-                // Using the flags, we can constrain the equality.
-                for is_non_zero in is_non_zero_flags {
-                    for (deferred_current, deferred_public) in deferred_proofs_digest
-                        .iter()
-                        .zip(public_values.deferred_proofs_digest.iter())
-                    {
-                        builder.assert_felt_eq(
-                            is_non_zero * (*deferred_current - *deferred_public),
-                            C::F::zero(),
-                        );
-                    }
-                }
-
-                // If it's not a shard with "CPU", then the deferred proofs digest should not
-                // change.
-                if !contains_cpu {
-                    for (d, pub_d) in deferred_proofs_digest
-                        .iter()
-                        .zip(public_values.deferred_proofs_digest.iter())
-                    {
-                        builder.assert_felt_eq(*d, *pub_d);
-                    }
-                }
-
-                // Update the deferred proofs digest.
-                deferred_proofs_digest.copy_from_slice(&public_values.deferred_proofs_digest);
-            }
-
-            // Verify that the number of shards is not too large, i.e. that for every shard, we
-            // have shard < 2^{MAX_LOG_NUMBER_OF_SHARDS}.
-            C::range_check_felt(builder, public_values.shard, MAX_LOG_NUMBER_OF_SHARDS);
-
-            // Update the reconstruct challenger.
-            // reconstruct_challenger.observe(builder, shard_proof.commitment.global_main_commit);
-            // for element in shard_proof.public_values.iter().take(machine.num_pv_elts()) {
-            //     reconstruct_challenger.observe(builder, *element);
+            // {
+            //     // Assert that the exit code is zero (success) for all proofs.
+            //     builder.assert_felt_eq(exit_code, C::F::zero());
             // }
 
-            // Cumulative sum is updated by sums of all chips.
-            for values in shard_proof.opened_values.chips.iter() {
-                global_cumulative_sum =
-                    builder.eval(global_cumulative_sum + values.global_cumulative_sum);
-            }
+            // Memory initialization & finalization constraints.
+            // {
+            //     // Assert that the MemoryInitialize address bits match the current loop variable.
+            //     for (bit, current_bit) in current_init_addr_bits
+            //         .iter()
+            //         .zip_eq(public_values.previous_init_addr_bits.iter())
+            //     {
+            //         builder.assert_felt_eq(*bit, *current_bit);
+            //     }
+
+            //     // Assert that the MemoryFinalize address bits match the current loop variable.
+            //     for (bit, current_bit) in current_finalize_addr_bits
+            //         .iter()
+            //         .zip_eq(public_values.previous_finalize_addr_bits.iter())
+            //     {
+            //         builder.assert_felt_eq(*bit, *current_bit);
+            //     }
+
+            //     // Assert that if MemoryInit is not present, then the address bits are the same.
+            //     if !contains_memory_init {
+            //         for (prev_bit, last_bit) in public_values
+            //             .previous_init_addr_bits
+            //             .iter()
+            //             .zip_eq(public_values.last_init_addr_bits.iter())
+            //         {
+            //             builder.assert_felt_eq(*prev_bit, *last_bit);
+            //         }
+            //     }
+
+            //     // Assert that if MemoryFinalize is not present, then the address bits are the
+            //     // same.
+            //     if !contains_memory_finalize {
+            //         for (prev_bit, last_bit) in public_values
+            //             .previous_finalize_addr_bits
+            //             .iter()
+            //             .zip_eq(public_values.last_finalize_addr_bits.iter())
+            //         {
+            //             builder.assert_felt_eq(*prev_bit, *last_bit);
+            //         }
+            //     }
+
+            //     // Update the MemoryInitialize address bits.
+            //     for (bit, pub_bit) in
+            //         current_init_addr_bits.iter_mut().zip(public_values.last_init_addr_bits.iter())
+            //     {
+            //         *bit = *pub_bit;
+            //     }
+
+            //     // Update the MemoryFinalize address bits.
+            //     for (bit, pub_bit) in current_finalize_addr_bits
+            //         .iter_mut()
+            //         .zip(public_values.last_finalize_addr_bits.iter())
+            //     {
+            //         *bit = *pub_bit;
+            //     }
+            // }
+
+            // Digest constraints.
+            //     {
+            //         // // If `committed_value_digest` is not zero, then the current value should be equal
+            //         // to `public_values.committed_value_digest`.
+
+            //         // Set flags to indicate whether `committed_value_digest` is non-zero. The flags are
+            //         // given by the elements of the array, and they will be used as filters to constrain
+            //         // the equality.
+            //         let mut is_non_zero_flags = vec![];
+            //         for word in committed_value_digest {
+            //             for byte in word {
+            //                 is_non_zero_flags.push(byte);
+            //             }
+            //         }
+
+            //         // Using the flags, we can constrain the equality.
+            //         for is_non_zero in is_non_zero_flags {
+            //             for (word_current, word_public) in
+            //                 committed_value_digest.into_iter().zip(public_values.committed_value_digest)
+            //             {
+            //                 for (byte_current, byte_public) in word_current.into_iter().zip(word_public)
+            //                 {
+            //                     builder.assert_felt_eq(
+            //                         is_non_zero * (byte_current - byte_public),
+            //                         C::F::zero(),
+            //                     );
+            //                 }
+            //             }
+            //         }
+
+            //         // If it's not a shard with "CPU", then the committed value digest shouldn't change.
+            //         if !contains_cpu {
+            //             for (word_d, pub_word_d) in committed_value_digest
+            //                 .iter()
+            //                 .zip(public_values.committed_value_digest.iter())
+            //             {
+            //                 for (d, pub_d) in word_d.0.iter().zip(pub_word_d.0.iter()) {
+            //                     builder.assert_felt_eq(*d, *pub_d);
+            //                 }
+            //             }
+            //         }
+
+            //         // Update the committed value digest.
+            //         for (word_d, pub_word_d) in committed_value_digest
+            //             .iter_mut()
+            //             .zip(public_values.committed_value_digest.iter())
+            //         {
+            //             for (d, pub_d) in word_d.0.iter_mut().zip(pub_word_d.0.iter()) {
+            //                 *d = *pub_d;
+            //             }
+            //         }
+
+            //         // Update the exit code.
+            //         exit_code = public_values.exit_code;
+
+            //         // If `deferred_proofs_digest` is not zero, then the current value should be equal
+            //         // to `public_values.deferred_proofs_digest.
+
+            //         // Set a flag to indicate whether `deferred_proofs_digest` is non-zero. The flags
+            //         // are given by the elements of the array, and they will be used as filters to
+            //         // constrain the equality.
+            //         let mut is_non_zero_flags = vec![];
+            //         for element in deferred_proofs_digest {
+            //             is_non_zero_flags.push(element);
+            //         }
+
+            //         // Using the flags, we can constrain the equality.
+            //         for is_non_zero in is_non_zero_flags {
+            //             for (deferred_current, deferred_public) in deferred_proofs_digest
+            //                 .iter()
+            //                 .zip(public_values.deferred_proofs_digest.iter())
+            //             {
+            //                 builder.assert_felt_eq(
+            //                     is_non_zero * (*deferred_current - *deferred_public),
+            //                     C::F::zero(),
+            //                 );
+            //             }
+            //         }
+
+            //         // If it's not a shard with "CPU", then the deferred proofs digest should not
+            //         // change.
+            //         if !contains_cpu {
+            //             for (d, pub_d) in deferred_proofs_digest
+            //                 .iter()
+            //                 .zip(public_values.deferred_proofs_digest.iter())
+            //             {
+            //                 builder.assert_felt_eq(*d, *pub_d);
+            //             }
+            //         }
+
+            //         // Update the deferred proofs digest.
+            //         deferred_proofs_digest.copy_from_slice(&public_values.deferred_proofs_digest);
+            //     }
+
+            //     // Verify that the number of shards is not too large, i.e. that for every shard, we
+            //     // have shard < 2^{MAX_LOG_NUMBER_OF_SHARDS}.
+            //     C::range_check_felt(builder, public_values.shard, MAX_LOG_NUMBER_OF_SHARDS);
+
+            //     // Update the reconstruct challenger.
+            //     // reconstruct_challenger.observe(builder, shard_proof.commitment.global_main_commit);
+            //     // for element in shard_proof.public_values.iter().take(machine.num_pv_elts()) {
+            //     //     reconstruct_challenger.observe(builder, *element);
+            //     // }
+
+            //     // Cumulative sum is updated by sums of all chips.
+            //     for values in shard_proof.opened_values.chips.iter() {
+            //         global_cumulative_sum =
+            //             builder.eval(global_cumulative_sum + values.global_cumulative_sum);
+            //     }
         }
 
         // Assert that the last exit code is zero.
-        builder.assert_felt_eq(exit_code, C::F::zero());
+        // builder.assert_felt_eq(exit_code, C::F::zero());
 
         // Write all values to the public values struct and commit to them.
-        {
-            // Compute the vk digest.
-            // let vk_digest = vk.hash(builder);
+        // {
+        // Compute the vk digest.
+        // let vk_digest = vk.hash(builder);
 
-            // // Collect the public values for challengers.
-            // let initial_challenger_public_values =
-            //     initial_reconstruct_challenger.public_values(builder);
-            // let final_challenger_public_values = reconstruct_challenger.public_values(builder);
+        // // Collect the public values for challengers.
+        // let initial_challenger_public_values =
+        //     initial_reconstruct_challenger.public_values(builder);
+        // let final_challenger_public_values = reconstruct_challenger.public_values(builder);
 
-            // // Collect the cumulative sum.
-            // let global_cumulative_sum_array = builder.ext2felt_v2(global_cumulative_sum);
+        // // Collect the cumulative sum.
+        // let global_cumulative_sum_array = builder.ext2felt_v2(global_cumulative_sum);
 
-            // // Collect the deferred proof digests.
-            // let zero: Felt<_> = builder.eval(C::F::zero());
-            // let start_deferred_digest = [zero; POSEIDON_NUM_WORDS];
-            // let end_deferred_digest = [zero; POSEIDON_NUM_WORDS];
+        // // Collect the deferred proof digests.
+        // let zero: Felt<_> = builder.eval(C::F::zero());
+        // let start_deferred_digest = [zero; POSEIDON_NUM_WORDS];
+        // let end_deferred_digest = [zero; POSEIDON_NUM_WORDS];
 
-            // Initialize the public values we will commit to.
-            // let mut recursion_public_values_stream = [zero; RECURSIVE_PROOF_NUM_PV_ELTS];
-            // let recursion_public_values: &mut RecursionPublicValues<_> =
-            //     recursion_public_values_stream.as_mut_slice().borrow_mut();
-            // recursion_public_values.committed_value_digest = committed_value_digest;
-            // recursion_public_values.deferred_proofs_digest = deferred_proofs_digest;
-            // recursion_public_values.start_pc = start_pc;
-            // recursion_public_values.next_pc = current_pc;
-            // recursion_public_values.start_shard = initial_shard;
-            // recursion_public_values.next_shard = current_shard;
-            // recursion_public_values.start_execution_shard = initial_execution_shard;
-            // recursion_public_values.next_execution_shard = current_execution_shard;
-            // recursion_public_values.previous_init_addr_bits = initial_previous_init_addr_bits;
-            // recursion_public_values.last_init_addr_bits = current_init_addr_bits;
-            // recursion_public_values.previous_finalize_addr_bits =
-            //     initial_previous_finalize_addr_bits;
-            // recursion_public_values.last_finalize_addr_bits = current_finalize_addr_bits;
-            // recursion_public_values.sp1_vk_digest = vk_digest;
-            // recursion_public_values.leaf_challenger = leaf_challenger_public_values;
-            // recursion_public_values.start_reconstruct_challenger = initial_challenger_public_values;
-            // recursion_public_values.end_reconstruct_challenger = final_challenger_public_values;
-            // recursion_public_values.cumulative_sum = global_cumulative_sum_array;
-            // recursion_public_values.start_reconstruct_deferred_digest = start_deferred_digest;
-            // recursion_public_values.end_reconstruct_deferred_digest = end_deferred_digest;
-            // recursion_public_values.exit_code = exit_code;
-            // recursion_public_values.is_complete = is_complete;
-            // // Set the contains an execution shard flag.
-            // recursion_public_values.contains_execution_shard =
-            //     builder.eval(C::F::from_bool(cpu_shard_seen));
-            // recursion_public_values.vk_root = vk_root;
+        // Initialize the public values we will commit to.
+        // let mut recursion_public_values_stream = [zero; RECURSIVE_PROOF_NUM_PV_ELTS];
+        // let recursion_public_values: &mut RecursionPublicValues<_> =
+        //     recursion_public_values_stream.as_mut_slice().borrow_mut();
+        // recursion_public_values.committed_value_digest = committed_value_digest;
+        // recursion_public_values.deferred_proofs_digest = deferred_proofs_digest;
+        // recursion_public_values.start_pc = start_pc;
+        // recursion_public_values.next_pc = current_pc;
+        // recursion_public_values.start_shard = initial_shard;
+        // recursion_public_values.next_shard = current_shard;
+        // recursion_public_values.start_execution_shard = initial_execution_shard;
+        // recursion_public_values.next_execution_shard = current_execution_shard;
+        // recursion_public_values.previous_init_addr_bits = initial_previous_init_addr_bits;
+        // recursion_public_values.last_init_addr_bits = current_init_addr_bits;
+        // recursion_public_values.previous_finalize_addr_bits =
+        //     initial_previous_finalize_addr_bits;
+        // recursion_public_values.last_finalize_addr_bits = current_finalize_addr_bits;
+        // recursion_public_values.sp1_vk_digest = vk_digest;
+        // recursion_public_values.leaf_challenger = leaf_challenger_public_values;
+        // recursion_public_values.start_reconstruct_challenger = initial_challenger_public_values;
+        // recursion_public_values.end_reconstruct_challenger = final_challenger_public_values;
+        // recursion_public_values.cumulative_sum = global_cumulative_sum_array;
+        // recursion_public_values.start_reconstruct_deferred_digest = start_deferred_digest;
+        // recursion_public_values.end_reconstruct_deferred_digest = end_deferred_digest;
+        // recursion_public_values.exit_code = exit_code;
+        // recursion_public_values.is_complete = is_complete;
+        // // Set the contains an execution shard flag.
+        // recursion_public_values.contains_execution_shard =
+        //     builder.eval(C::F::from_bool(cpu_shard_seen));
+        // recursion_public_values.vk_root = vk_root;
 
-            // // Calculate the digest and set it in the public values.
-            // recursion_public_values.digest =
-            //     recursion_public_values_digest::<C, SC>(builder, recursion_public_values);
+        // // Calculate the digest and set it in the public values.
+        // recursion_public_values.digest =
+        //     recursion_public_values_digest::<C, SC>(builder, recursion_public_values);
 
-            // SC::commit_recursion_public_values(builder, *recursion_public_values);
-        }
+        // SC::commit_recursion_public_values(builder, *recursion_public_values);
+        // }
     }
 }
 

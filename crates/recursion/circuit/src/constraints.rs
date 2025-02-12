@@ -259,4 +259,75 @@ where
 
         Ok(())
     }
+
+    pub fn verify_opening_shape_(
+        chip: &MachineChip<SC, A>,
+        opening: &ChipOpenedValues<Ext<C::F, C::EF>>,
+    ) -> Result<(), OpeningShapeError> {
+        // Verify that the preprocessed width matches the expected value for the chip.
+        // if opening.preprocessed.local.len() != chip.preprocessed_width() {
+        //     return Err(OpeningShapeError::PreprocessedWidthMismatch(
+        //         chip.preprocessed_width(),
+        //         opening.preprocessed.local.len(),
+        //     ));
+        // }
+        // if opening.preprocessed.next.len() != chip.preprocessed_width() {
+        //     return Err(OpeningShapeError::PreprocessedWidthMismatch(
+        //         chip.preprocessed_width(),
+        //         opening.preprocessed.next.len(),
+        //     ));
+        // }
+
+        // Verify that the main width matches the expected value for the chip.
+        if opening.main.local.len() != chip.width() {
+            return Err(OpeningShapeError::MainWidthMismatch(
+                chip.width(),
+                opening.main.local.len(),
+            ));
+        }
+        if opening.main.next.len() != chip.width() {
+            return Err(OpeningShapeError::MainWidthMismatch(
+                chip.width(),
+                opening.main.next.len(),
+            ));
+        }
+
+        // Verify that the permutation width matches the expected value for the chip.
+        // if opening.permutation.local.len()
+        //     != chip.permutation_width() * <SC::Challenge as AbstractExtensionField<C::F>>::D
+        // {
+        //     return Err(OpeningShapeError::PermutationWidthMismatch(
+        //         chip.permutation_width(),
+        //         opening.permutation.local.len(),
+        //     ));
+        // }
+        // if opening.permutation.next.len()
+        //     != chip.permutation_width() * <SC::Challenge as AbstractExtensionField<C::F>>::D
+        // {
+        //     return Err(OpeningShapeError::PermutationWidthMismatch(
+        //         chip.permutation_width(),
+        //         opening.permutation.next.len(),
+        //     ));
+        // }
+
+        // Verift that the number of quotient chunks matches the expected value for the chip.
+        if opening.quotient.len() != chip.quotient_width() {
+            return Err(OpeningShapeError::QuotientWidthMismatch(
+                chip.quotient_width(),
+                opening.quotient.len(),
+            ));
+        }
+        // For each quotient chunk, verify that the number of elements is equal to the degree of the
+        // challenge extension field over the value field.
+        for slice in &opening.quotient {
+            if slice.len() != <SC::Challenge as AbstractExtensionField<C::F>>::D {
+                return Err(OpeningShapeError::QuotientChunkSizeMismatch(
+                    <SC::Challenge as AbstractExtensionField<C::F>>::D,
+                    slice.len(),
+                ));
+            }
+        }
+
+        Ok(())
+    }
 }

@@ -76,11 +76,14 @@ use sp1_recursion_core::{
 };
 pub use sp1_recursion_gnark_ffi::proof::{Groth16Bn254Proof, PlonkBn254Proof};
 use sp1_recursion_gnark_ffi::{groth16_bn254::Groth16Bn254Prover, plonk_bn254::PlonkBn254Prover};
-use sp1_stark::{air::InteractionScope, MachineProvingKey, ProofShape};
 use sp1_stark::{
     air::PublicValues, baby_bear_poseidon2::BabyBearPoseidon2, Challenge, Challenger,
-    MachineProver, SP1CoreOpts, SP1ProverOpts, ShardProof, StarkGenericConfig, StarkVerifyingKey,
-    Val, Word, DIGEST_SIZE,
+    MachineProver, SP1CoreOpts, SP1ProverOpts, ShardProof, StarkGenericConfig, StarkMachine,
+    StarkVerifyingKey, Val, Word, DIGEST_SIZE,
+};
+use sp1_stark::{
+    air::{InteractionScope, MachineAir},
+    MachineProvingKey, ProofShape,
 };
 
 use sp1_stark::InnerChallenger;
@@ -500,7 +503,8 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
                 //     chip_ordering,
                 //     public_values,
                 // } = dummy_input.read(&mut builder);
-                let input = dummy_input.read(&mut builder);
+                let input: ShardProofVariable<WrapConfig, BabyBearPoseidon2> =
+                    dummy_input.read(&mut builder);
                 println!("p3_stark_wrap_program 2");
 
                 // let input: sp1_recursion_circuit::machine::SP1RecursionWitnessVariable<
@@ -548,6 +552,100 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
                 program
             })
             .clone()
+    }
+
+    pub fn p3_stark_wrap_program_<A>(
+        &self,
+        machine: &StarkMachine<BabyBearPoseidon2, A>,
+    ) -> Arc<RecursionProgram<BabyBear>>
+    where
+        A: MachineAir<BabyBear>
+            + for<'a> p3_air::Air<
+                sp1_stark::GenericVerifierConstraintFolder<
+                    'a,
+                    p3_baby_bear::BabyBear,
+                    p3_field::extension::BinomialExtensionField<p3_baby_bear::BabyBear, 4>,
+                    sp1_recursion_compiler::ir::Felt<p3_baby_bear::BabyBear>,
+                    sp1_recursion_compiler::ir::Ext<
+                        p3_baby_bear::BabyBear,
+                        p3_field::extension::BinomialExtensionField<p3_baby_bear::BabyBear, 4>,
+                    >,
+                    sp1_recursion_compiler::ir::SymbolicExt<
+                        p3_baby_bear::BabyBear,
+                        p3_field::extension::BinomialExtensionField<p3_baby_bear::BabyBear, 4>,
+                    >,
+                >,
+            >,
+    {
+        // Get the operations.
+        let builder_span = tracing::debug_span!("build p3 wrapper program").entered();
+
+        let mut builder = Builder::<WrapConfig>::default();
+
+        // let shrink_shape: ProofShape = ShrinkAir::<BabyBear>::shrink_shape().into();
+        // let input_shape = SP1CompressShape::from(vec![shrink_shape]);
+        // let shape = SP1CompressWithVkeyShape {
+        //     compress_shape: input_shape,
+        //     merkle_tree_height: self.vk_merkle_tree.height,
+        // };
+
+        let shape = ProofShape { chip_information: vec![("p3_stark".to_string(), 0)] };
+        let dummy_input = ProofWitnessValues::dummy(machine, &shape);
+        println!("p3_stark_wrap_program_ 1");
+
+        // let ShardProofVariable {
+        //     commitment,
+        //     opened_values,
+        //     opening_proof,
+        //     chip_ordering,
+        //     public_values,
+        // } = dummy_input.read(&mut builder);
+        let input = dummy_input.read(&mut builder);
+        println!("p3_stark_wrap_program_ 2");
+
+        // let input: sp1_recursion_circuit::machine::SP1RecursionWitnessVariable<
+        //     sp1_recursion_compiler::circuit::AsmConfig<
+        //         BabyBear,
+        //         p3_field::extension::BinomialExtensionField<BabyBear, 4>,
+        //     >,
+        //     BabyBearPoseidon2,
+        // > = input.read(&mut builder);
+        SP1RecursiveVerifier::verify_(&mut builder, machine, input);
+        println!("p3_stark_wrap_program_ 3");
+
+        // Attest that the merkle tree root is correct.
+        // let root = input.merkle_var.root;
+        // for (val, expected) in root.iter().zip(self.vk_root.iter()) {
+        //     println!("val: {:?}, expected: {:?}", val, expected);
+        //     builder.assert_felt_eq(*val, *expected);
+        // }
+        // Verify the proof.
+        // SP1CompressRootVerifierWithVKey::verify(
+        //     &mut builder,
+        //     self.shrink_prover.machine(),
+        //     input,
+        //     self.vk_verification,
+        //     PublicValuesOutputDigest::Root,
+        // );
+        // let challenger = self.shrink_prover.machine().config().challenger_variable(&mut builder);
+        // StarkVerifier::verify_shard_(
+        //     &mut builder,
+        //     // vk,
+        //     self.shrink_prover.machine(),
+        //     challenger,
+        //     &input,
+        //     // global_permutation_challenges,
+        // );
+
+        let operations = builder.into_operations();
+        builder_span.exit();
+
+        // Compile the program.
+        let compiler_span = tracing::debug_span!("compile compress program").entered();
+        let mut compiler = AsmCompiler::<WrapConfig>::default();
+        let program = Arc::new(compiler.compile(operations));
+        compiler_span.exit();
+        program
     }
 
     pub fn deferred_program(
@@ -1180,11 +1278,31 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
     }
 
     #[instrument(name = "wrap_bn254_", level = "info", skip_all)]
-    pub fn wrap_bn254_(
+    pub fn wrap_bn254_<A>(
         &self,
         shard_proof: ShardProof<BabyBearPoseidon2>,
         opts: SP1ProverOpts,
-    ) -> Result<SP1ReduceProof<OuterSC>, SP1RecursionProverError> {
+        air: &StarkMachine<BabyBearPoseidon2, A>,
+    ) -> Result<SP1ReduceProof<OuterSC>, SP1RecursionProverError>
+    where
+        A: MachineAir<Val<InnerSC>>
+            + for<'a> p3_air::Air<
+                sp1_stark::GenericVerifierConstraintFolder<
+                    'a,
+                    p3_baby_bear::BabyBear,
+                    p3_field::extension::BinomialExtensionField<p3_baby_bear::BabyBear, 4>,
+                    sp1_recursion_compiler::ir::Felt<p3_baby_bear::BabyBear>,
+                    sp1_recursion_compiler::ir::Ext<
+                        p3_baby_bear::BabyBear,
+                        p3_field::extension::BinomialExtensionField<p3_baby_bear::BabyBear, 4>,
+                    >,
+                    sp1_recursion_compiler::ir::SymbolicExt<
+                        p3_baby_bear::BabyBear,
+                        p3_field::extension::BinomialExtensionField<p3_baby_bear::BabyBear, 4>,
+                    >,
+                >,
+            >,
+    {
         println!(
             "wrap_bn254_ initial proof length: {:?}",
             serde_json::to_string(&shard_proof).unwrap().len()
@@ -1216,7 +1334,8 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
 
         let input = ProofWitnessValues { shard_proof };
 
-        let program = self.p3_stark_wrap_program();
+        // let program = self.p3_stark_wrap_program();
+        let program = self.p3_stark_wrap_program_(air);
         // let program = self.wrap_program();
         println!("wrap_bn254_ program length : {:?}", program.instructions.len());
 

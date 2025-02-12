@@ -166,6 +166,11 @@ where
         let public_values = self.public_values.read(builder);
         let chip_ordering = self.chip_ordering.clone();
 
+        println!(
+            "Witnessable for ShardProof query_proofs {}",
+            opening_proof.fri_proof.query_proofs.len()
+        );
+
         ShardProofVariable {
             commitment,
             opened_values,

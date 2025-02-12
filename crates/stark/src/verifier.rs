@@ -360,18 +360,18 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
         // }
 
         // // Verify that the main width matches the expected value for the chip.
-        // if opening.main.local.len() != chip.width() {
-        //     return Err(OpeningShapeError::MainWidthMismatch(
-        //         chip.width(),
-        //         opening.main.local.len(),
-        //     ));
-        // }
-        // if opening.main.next.len() != chip.width() {
-        //     return Err(OpeningShapeError::MainWidthMismatch(
-        //         chip.width(),
-        //         opening.main.next.len(),
-        //     ));
-        // }
+        if opening.main.local.len() != chip.width() {
+            return Err(OpeningShapeError::MainWidthMismatch(
+                chip.width(),
+                opening.main.local.len(),
+            ));
+        }
+        if opening.main.next.len() != chip.width() {
+            return Err(OpeningShapeError::MainWidthMismatch(
+                chip.width(),
+                opening.main.next.len(),
+            ));
+        }
 
         // // Verify that the permutation width matches the expected value for the chip.
         // if opening.permutation.local.len() != chip.permutation_width() * SC::Challenge::D {
@@ -448,41 +448,41 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
 
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::needless_pass_by_value)]
-    fn verify_constraints_(
-        chip: &MachineChip<SC, A>,
-        opening: &ChipOpenedValues<SC::Challenge>,
-        trace_domain: Domain<SC>,
-        qc_domains: Vec<Domain<SC>>,
-        zeta: SC::Challenge,
-        alpha: SC::Challenge,
-        permutation_challenges: &[SC::Challenge],
-        public_values: &Vec<Val<SC>>,
-    ) -> Result<(), OodEvaluationMismatch>
-    where
-        A: for<'a> Air<VerifierConstraintFolder<'a, SC>>,
-    {
-        let sels = trace_domain.selectors_at_point(zeta);
+    // fn verify_constraints_(
+    //     chip: &MachineChip<SC, A>,
+    //     opening: &ChipOpenedValues<SC::Challenge>,
+    //     trace_domain: Domain<SC>,
+    //     qc_domains: Vec<Domain<SC>>,
+    //     zeta: SC::Challenge,
+    //     alpha: SC::Challenge,
+    //     permutation_challenges: &[SC::Challenge],
+    //     public_values: &Vec<Val<SC>>,
+    // ) -> Result<(), OodEvaluationMismatch>
+    // where
+    //     A: for<'a> Air<VerifierConstraintFolder<'a, SC>>,
+    // {
+    //     let sels = trace_domain.selectors_at_point(zeta);
 
-        // Recompute the quotient at zeta from the chunks.
-        let quotient = Self::recompute_quotient(opening, &qc_domains, zeta);
-        // Calculate the evaluations of the constraints at zeta.
-        let folded_constraints = Self::eval_constraints_(
-            chip,
-            opening,
-            &sels,
-            alpha,
-            permutation_challenges,
-            public_values,
-        );
+    //     // Recompute the quotient at zeta from the chunks.
+    //     let quotient = Self::recompute_quotient(opening, &qc_domains, zeta);
+    //     // Calculate the evaluations of the constraints at zeta.
+    //     let folded_constraints = Self::eval_constraints(
+    //         chip,
+    //         opening,
+    //         &sels,
+    //         alpha,
+    //         permutation_challenges,
+    //         public_values,
+    //     );
 
-        // Check that the constraints match the quotient, i.e.
-        //     folded_constraints(zeta) / Z_H(zeta) = quotient(zeta)
-        if folded_constraints * sels.inv_zeroifier == quotient {
-            Ok(())
-        } else {
-            Err(OodEvaluationMismatch)
-        }
-    }
+    //     // Check that the constraints match the quotient, i.e.
+    //     //     folded_constraints(zeta) / Z_H(zeta) = quotient(zeta)
+    //     if folded_constraints * sels.inv_zeroifier == quotient {
+    //         Ok(())
+    //     } else {
+    //         Err(OodEvaluationMismatch)
+    //     }
+    // }
 
     /// Evaluates the constraints for a chip and opening.
     pub fn eval_constraints(
@@ -578,23 +578,6 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
         chip.eval(&mut folder);
 
         folder.accumulator
-
-        // let main = opening.main.view();
-        // Need to transit from SP1::SC to P3::SC if possible b/c
-        // let mut folder = p3_uni_stark::VerifierConstraintFolder {
-        //     main,
-        //     public_values,
-        //     is_first_row: selectors.is_first_row,
-        //     is_last_row: selectors.is_last_row,
-        //     is_transition: selectors.is_transition,
-        //     alpha,
-        //     accumulator: SC::Challenge::zero(),
-        // };
-
-        // WIP
-        // chip.eval(&mut folder);
-
-        // folder.accumulator
     }
 
     /// Recomputes the quotient for a chip and opening.
@@ -691,6 +674,12 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
         let log_quotient_degrees =
             chips.iter().map(|chip| chip.log_quotient_degree()).collect::<Vec<_>>();
 
+        println!(
+            "Verifier::verify_shard_ log_degrees.len() {} log_quotient_degrees.len() {}",
+            log_degrees.len(),
+            log_quotient_degrees.len()
+        );
+
         let trace_domains = log_degrees
             .iter()
             .map(|log_degree| pcs.natural_domain_for_degree(1 << log_degree))
@@ -755,6 +744,12 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
         //     })
         //     .collect::<Vec<_>>();
 
+        println!(
+            "Verifier::verify_shard_ trace_domains.len() {} opened_values.chips.len {}",
+            trace_domains.len(),
+            opened_values.chips.len()
+        );
+
         let main_domains_points_and_opens = trace_domains
             .iter()
             .zip_eq(opened_values.chips.iter())
@@ -801,6 +796,11 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
             .iter()
             .zip_eq(quotient_chunk_domains.iter())
             .flat_map(|(values, qc_domains)| {
+                println!(
+                    "quotient_domains_points_and_opens###### values.len {} qc_domains.len() {}",
+                    values.quotient.len(),
+                    qc_domains.len()
+                );
                 values
                     .quotient
                     .iter()
@@ -865,7 +865,7 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
             Self::verify_opening_shape_(chip, values)
                 .map_err(|e| VerificationError::OpeningShapeError(chip.name(), e))?;
             // Verify the constraint evaluation.
-            Self::verify_constraints_(
+            Self::verify_constraints(
                 chip,
                 values,
                 trace_domain,
