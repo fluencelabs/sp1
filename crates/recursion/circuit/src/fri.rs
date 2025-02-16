@@ -82,6 +82,11 @@ pub fn verify_two_adic_pcs<C: CircuitConfig<F = SC::Val>, SC: BabyBearFriConfigV
         verify_shape_and_sample_challenges::<C, SC>(builder, config, &proof.fri_proof, challenger);
 
     let log_global_max_height = proof.fri_proof.commit_phase_commits.len() + config.log_blowup;
+    println!(
+        "proof.fri_proof.commit_phase_commits.len() 4 {} config.log_blowup {}",
+        proof.fri_proof.commit_phase_commits.len(),
+        config.log_blowup
+    );
 
     // Precompute the two-adic powers of the two-adic generator. They can be loaded in as constants.
     // The ith element has order 2^(log_global_max_height - i).
@@ -114,6 +119,10 @@ pub fn verify_two_adic_pcs<C: CircuitConfig<F = SC::Val>, SC: BabyBearFriConfigV
                 let batch_max_height = batch_heights.iter().max().expect("Empty batch?");
                 let log_batch_max_height = log2_strict_usize(*batch_max_height);
                 let bits_reduced = log_global_max_height - log_batch_max_height;
+                println!(
+                    "bits_reduced: {} log_global_max_height {} log_batch_max_height {}",
+                    bits_reduced, log_global_max_height, log_batch_max_height
+                );
 
                 let reduced_index_bits = &index_bits[bits_reduced..];
 
@@ -424,6 +433,7 @@ pub fn dummy_pcs_proof(
         .map(|shape| shape.shapes.iter().map(|shape| shape.log_degree).max().unwrap())
         .max()
         .unwrap();
+    println!("dummy_pcs_proof max_height: {}", max_height);
     let fri_proof = FriProof {
         commit_phase_commits: vec![dummy_hash(); max_height],
         query_proofs: vec![dummy_query_proof(max_height, log_blowup); fri_queries],
@@ -440,12 +450,18 @@ pub fn dummy_pcs_proof(
                 .map(|shapes| {
                     let batch_max_height =
                         shapes.shapes.iter().map(|shape| shape.log_degree).max().unwrap();
+                    println!(
+                        "dummy_pcs_proof batch_max_height: {} log_blowup {}",
+                        batch_max_height, log_blowup
+                    );
+
                     BatchOpening {
                         opened_values: shapes
                             .shapes
                             .iter()
                             .map(|shape| vec![BabyBear::zero(); shape.width])
                             .collect(),
+                        // WIP here is diff shape !!!
                         opening_proof: vec![dummy_hash().into(); batch_max_height + log_blowup],
                     }
                 })

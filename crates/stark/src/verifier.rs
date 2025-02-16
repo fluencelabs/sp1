@@ -675,9 +675,8 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
             chips.iter().map(|chip| chip.log_quotient_degree()).collect::<Vec<_>>();
 
         println!(
-            "Verifier::verify_shard_ log_degrees.len() {} log_quotient_degrees.len() {}",
-            log_degrees.len(),
-            log_quotient_degrees.len()
+            "Verifier::verify_shard_ log_degrees {:?} log_quotient_degrees {:?}",
+            log_degrees, log_quotient_degrees
         );
 
         let trace_domains = log_degrees
@@ -827,7 +826,10 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
             (local_main_commit.clone(), local_trace_points_and_openings),
             (quotient_commit.clone(), quotient_domains_points_and_opens),
         ];
-
+        // println!(
+        //     "verify_shard_ query_proofs##### {}",
+        //     serde_json::to_string_pretty(&opening_proof).unwrap(),
+        // );
         // let rounds = if !global_trace_points_and_openings.is_empty() {
         //     vec![
         //         (vk.commit.clone(), preprocessed_domains_points_and_opens),

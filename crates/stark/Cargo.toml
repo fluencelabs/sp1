@@ -43,6 +43,7 @@ getrandom = { version = "0.2.15", features = ["custom"] }
 sysinfo = "0.30.13"
 num-traits = "0.2.19"
 thiserror = "1.0.64"
+serde_json = "1.0.133"
 
 [dev-dependencies]
 sp1-zkvm = { workspace = true }

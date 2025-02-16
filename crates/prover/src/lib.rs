@@ -557,6 +557,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
     pub fn p3_stark_wrap_program_<A>(
         &self,
         machine: &StarkMachine<BabyBearPoseidon2, A>,
+        proof_shape: &ProofShape,
     ) -> Arc<RecursionProgram<BabyBear>>
     where
         A: MachineAir<BabyBear>
@@ -589,9 +590,13 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         //     merkle_tree_height: self.vk_merkle_tree.height,
         // };
 
-        let shape = ProofShape { chip_information: vec![("p3_stark".to_string(), 0)] };
-        let dummy_input = ProofWitnessValues::dummy(machine, &shape);
+        // let shape = ProofShape { chip_information: vec![("p3_stark".to_string(), 0)] };
+        let dummy_input = ProofWitnessValues::dummy(machine, proof_shape);
         println!("p3_stark_wrap_program_ 1");
+        // println!(
+        //     "p3_stark_wrap_program_ ProofWitnessValues.s {}",
+        //     serde_json::to_string_pretty(&dummy_input.shard_proof.opening_proof).unwrap()
+        // );
 
         // let ShardProofVariable {
         //     commitment,
@@ -1332,10 +1337,17 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         // ShardProof { commitment, opened_values, opening_proof, chip_ordering, public_values };
         // let shard_proof = p3_proof_to_shardproof::<BabyBearPoseidon2>(p3_proof);
 
+        let chip_proof_log_degree = shard_proof.opened_values.chips[0].log_degree;
+        println!("wrap_bn254_ program chip_proof_log_degree : {}", chip_proof_log_degree);
+
         let input = ProofWitnessValues { shard_proof };
 
+        let chip_name = air.chips()[0].name();
+        let proof_shape =
+            ProofShape { chip_information: vec![(chip_name.to_string(), chip_proof_log_degree)] };
+
         // let program = self.p3_stark_wrap_program();
-        let program = self.p3_stark_wrap_program_(air);
+        let program = self.p3_stark_wrap_program_(air, &proof_shape);
         // let program = self.wrap_program();
         println!("wrap_bn254_ program length : {:?}", program.instructions.len());
 

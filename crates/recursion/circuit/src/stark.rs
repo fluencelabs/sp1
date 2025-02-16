@@ -58,8 +58,16 @@ impl ProofWitnessValues<BabyBearPoseidon2> {
         // let (_, shard_proof) = dummy_vk_and_shard_proof(machine, shape);
 
         // WIP
-        let local_main_batch_shape = vec![PolynomialShape { width: 42, log_degree: 8 }];
-        let quotient_batch_shape = vec![PolynomialShape { width: 4, log_degree: 8 }];
+        let chip = &machine.chips()[0];
+        let log_degree = shape.chip_information[0].1;
+        println!(
+            "dummy chip.width() {} chip.quotinent_width() {} chip.log_quotient_degree() {}",
+            chip.width(),
+            chip.quotient_width(),
+            chip.log_quotient_degree()
+        );
+        let local_main_batch_shape = vec![PolynomialShape { width: chip.width(), log_degree }];
+        let quotient_batch_shape = vec![PolynomialShape { width: 4, log_degree }];
         let batch_shapes = vec![
             PolynomialBatchShape { shapes: local_main_batch_shape },
             PolynomialBatchShape { shapes: quotient_batch_shape },
@@ -68,10 +76,11 @@ impl ProofWitnessValues<BabyBearPoseidon2> {
         let log_blowup = machine.config().fri_config().log_blowup;
         let opening_proof = dummy_pcs_proof(fri_queries, &batch_shapes, log_blowup);
 
-        let opened_values =
-            ShardOpenedValues { chips: vec![dummy_opened_values_::<BabyBear, InnerChallenge>(8)] };
+        let opened_values = ShardOpenedValues {
+            chips: vec![dummy_opened_values_::<BabyBear, InnerChallenge, A>(chip, log_degree)],
+        };
 
-        let chips = vec![("ProgExec".to_string(), 4)];
+        let chips = vec![(chip.name().to_string(), 4)];
 
         let chip_ordering = chips
             .iter()
@@ -286,25 +295,28 @@ fn dummy_opened_values<F: Field, EF: ExtensionField<F>, A: MachineAir<F>>(
     }
 }
 
-fn dummy_opened_values_<F: Field, EF: ExtensionField<F>>(
-    // chip: &Chip<F, A>,
+fn dummy_opened_values_<F: Field, EF: ExtensionField<F>, A: MachineAir<F>>(
+    chip: &Chip<F, A>,
     log_degree: usize,
 ) -> ChipOpenedValues<EF> {
-    let preprocessed_width = 42;
+    println!("dummy_opened_values_ log_degree {}", log_degree);
+    let preprocessed_width = chip.preprocessed_width();
     let preprocessed = AirOpenedValues {
         local: vec![EF::zero(); preprocessed_width],
         next: vec![EF::zero(); preprocessed_width],
     };
-    let main_width = 42;
+    let main_width = chip.width();
+    // let main_width = 42;
     let main =
         AirOpenedValues { local: vec![EF::zero(); main_width], next: vec![EF::zero(); main_width] };
 
+    // let permutation_width = chip.permutation_width();
     let permutation_width = 42;
     let permutation = AirOpenedValues {
         local: vec![EF::zero(); permutation_width * EF::D],
         next: vec![EF::zero(); permutation_width * EF::D],
     };
-    let quotient_width = 1;
+    let quotient_width = chip.quotient_width();
     let quotient = (0..quotient_width).map(|_| vec![EF::zero(); EF::D]).collect::<Vec<_>>();
 
     ChipOpenedValues {
@@ -649,10 +661,10 @@ where
             chips.iter().map(|chip| chip.log_quotient_degree()).collect::<Vec<_>>();
 
         println!(
-            "StarkVerifier::verify_shard_ chips.len() {} log_degrees.len() {} log_quotient_degrees.len() {}",
+            "StarkVerifier::verify_shard_ chips.len() {} log_degrees.len() {:?} log_quotient_degrees {:?}",
             chips.len(),
-            log_degrees.len(),
-            log_quotient_degrees.len()
+            log_degrees,
+            log_quotient_degrees
         );
 
         let trace_domains = log_degrees
@@ -822,6 +834,10 @@ where
         // vec![global_main_round, local_main_round, perm_round, quotient_round];
 
         println!("verify_shard_ query_proofs {}", opening_proof.fri_proof.query_proofs.len());
+        // println!(
+        //     "verify_shard_ query_proofs {}",
+        //     serde_json::to_string_pretty(&opening_proof).unwrap()
+        // );
 
         // Verify the pcs proof
         builder.cycle_tracker_v2_enter("stage-d-verify-pcs".to_string());
