@@ -67,7 +67,8 @@ impl ProofWitnessValues<BabyBearPoseidon2> {
             chip.log_quotient_degree()
         );
         let local_main_batch_shape = vec![PolynomialShape { width: chip.width(), log_degree }];
-        let quotient_batch_shape = vec![PolynomialShape { width: 4, log_degree }];
+        // TODO hardcoded quotinent shape. Need to fix
+        let quotient_batch_shape = vec![PolynomialShape { width: 4, log_degree }, PolynomialShape { width: 4, log_degree }];
         let batch_shapes = vec![
             PolynomialBatchShape { shapes: local_main_batch_shape },
             PolynomialBatchShape { shapes: quotient_batch_shape },
@@ -310,14 +311,18 @@ fn dummy_opened_values_<F: Field, EF: ExtensionField<F>, A: MachineAir<F>>(
     let main =
         AirOpenedValues { local: vec![EF::zero(); main_width], next: vec![EF::zero(); main_width] };
 
-    // let permutation_width = chip.permutation_width();
-    let permutation_width = 42;
+    let permutation_width = chip.width();
     let permutation = AirOpenedValues {
         local: vec![EF::zero(); permutation_width * EF::D],
         next: vec![EF::zero(); permutation_width * EF::D],
     };
     let quotient_width = chip.quotient_width();
     let quotient = (0..quotient_width).map(|_| vec![EF::zero(); EF::D]).collect::<Vec<_>>();
+    println!(
+        "dummy_opened_values_ quotient_width {} quotinent.len {}",
+        quotient_width,
+        quotient.len()
+    );
 
     ChipOpenedValues {
         preprocessed,
