@@ -619,7 +619,7 @@ where
                 >,
             >,
     {
-        println!("verify_ {:?}", shard_proof.commitment.global_main_commit[0]);
+        // println!("verify_ {:?}", shard_proof.commitment.global_main_commit[0]);
         // Read input.
         // let SP1RecursionWitnessVariable {
         //     vk,

@@ -378,11 +378,12 @@ where
     // Observe the preprocessed commitment.
     // vk.observe_into(challenger);
 
+    // WIP public values trace in challenger
     // tracing::debug_span!("observe challenges for all shards").in_scope(|| {
     //     proof.shard_proofs.iter().for_each(|shard_proof| {
-    //         if contains_global_bus {
-    //             challenger.observe(shard_proof.commitment.global_main_commit.clone());
-    //         }
+    //         // if contains_global_bus {
+    //         //     challenger.observe(shard_proof.commitment.global_main_commit.clone());
+    //         // }
     //         challenger.observe_slice(&shard_proof.public_values[0..self.num_pv_elts()]);
     //     });
     // });

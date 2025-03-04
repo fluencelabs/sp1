@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    eval_permutation_constraints, generate_permutation_trace, get_grouped_maps, PROOF_MAX_NUM_PVS,
+    generate_permutation_trace, get_grouped_maps, PROOF_MAX_NUM_PVS,
 };
 
 /// An Air that encodes lookups based on interactions.

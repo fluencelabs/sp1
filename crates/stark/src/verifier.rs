@@ -11,7 +11,6 @@ use p3_air::{Air, BaseAir};
 use p3_challenger::{CanObserve, FieldChallenger};
 use p3_commit::{LagrangeSelectors, Pcs, PolynomialSpace};
 use p3_field::{AbstractExtensionField, AbstractField, Field};
-use p3_matrix::{dense::RowMajorMatrixView, stack::VerticalPair};
 
 use super::{
     folder::VerifierConstraintFolder,
@@ -624,11 +623,11 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
     #[allow(clippy::too_many_lines)]
     pub fn verify_shard_(
         config: &SC,
-        vk: &StarkVerifyingKey<SC>,
+        _vk: &StarkVerifyingKey<SC>,
         chips: &[&MachineChip<SC, A>],
         challenger: &mut SC::Challenger,
         proof: &ShardProof<SC>,
-        global_permutation_challenges: &[SC::Challenge],
+        _global_permutation_challenges: &[SC::Challenge],
     ) -> Result<(), VerificationError<SC>>
     where
         A: for<'a> Air<VerifierConstraintFolder<'a, SC>>,
@@ -639,7 +638,7 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
             commitment,
             opened_values,
             opening_proof,
-            chip_ordering,
+            chip_ordering: _chip_ordering,
             public_values,
             ..
         } = proof;
@@ -811,7 +810,7 @@ impl<SC: StarkGenericConfig, A: MachineAir<Val<SC>>> Verifier<SC, A> {
         // Split the main_domains_points_and_opens to the global and local chips.
         // let mut global_trace_points_and_openings = Vec::new();
         let mut local_trace_points_and_openings = Vec::new();
-        for (i, points_and_openings) in
+        for (_i, points_and_openings) in
             main_domains_points_and_opens.clone().into_iter().enumerate()
         {
             // let scope = chip_scopes[i];

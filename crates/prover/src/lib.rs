@@ -21,7 +21,7 @@ pub mod verify;
 use std::{
     borrow::Borrow,
     collections::BTreeMap,
-    default, env,
+    env,
     num::NonZeroUsize,
     path::Path,
     sync::{
@@ -34,7 +34,6 @@ use std::{
 
 use lru::LruCache;
 
-use p3_uni_stark::Proof;
 use tracing::instrument;
 
 use p3_baby_bear::BabyBear;
@@ -60,7 +59,7 @@ use sp1_recursion_circuit::{
         SP1RecursiveVerifier,
     },
     merkle_tree::MerkleTree,
-    stark::{dummy_vk_and_shard_proof, ProofWitnessValues, ShardProofVariable, StarkVerifier},
+    stark::ProofWitnessValues,
     witness::Witnessable,
     WrapConfig,
 };
@@ -85,8 +84,6 @@ use sp1_stark::{
     air::{InteractionScope, MachineAir},
     MachineProvingKey, ProofShape,
 };
-
-use sp1_stark::InnerChallenger;
 
 pub use types::*;
 use utils::{sp1_committed_values_digest_bn254, sp1_vkey_digest_bn254, words_to_bytes};
@@ -515,7 +512,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
 
         // let shape = ProofShape { chip_information: vec![("p3_stark".to_string(), 0)] };
         let dummy_input = ProofWitnessValues::dummy(machine, proof_shape);
-        println!("p3_stark_wrap_program_ 1");
+        // println!("p3_stark_wrap_program_ 1");
         // println!(
         //     "p3_stark_wrap_program_ ProofWitnessValues.s {}",
         //     serde_json::to_string_pretty(&dummy_input.shard_proof.opening_proof).unwrap()
@@ -529,7 +526,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         //     public_values,
         // } = dummy_input.read(&mut builder);
         let input = dummy_input.read(&mut builder);
-        println!("p3_stark_wrap_program_ 2");
+        // println!("p3_stark_wrap_program_ 2");
 
         // let input: sp1_recursion_circuit::machine::SP1RecursionWitnessVariable<
         //     sp1_recursion_compiler::circuit::AsmConfig<
@@ -539,7 +536,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         //     BabyBearPoseidon2,
         // > = input.read(&mut builder);
         SP1RecursiveVerifier::verify_(&mut builder, machine, input);
-        println!("p3_stark_wrap_program_ 3");
+        // println!("p3_stark_wrap_program_ 3");
 
         // Attest that the merkle tree root is correct.
         // let root = input.merkle_var.root;
@@ -1191,10 +1188,10 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
             .prove(&wrap_pk, vec![runtime.record], &mut wrap_challenger, opts.recursion_opts)
             .unwrap();
 
-        println!(
-            "wrap_bn254 wrap proof length: {:?}",
-            serde_json::to_string(&wrap_proof).unwrap().len()
-        );
+        // println!(
+        //     "wrap_bn254 wrap proof length: {:?}",
+        //     serde_json::to_string(&wrap_proof).unwrap().len()
+        // );
 
         let elapsed = time.elapsed();
         tracing::debug!("wrap proving time: {:?}", elapsed);
@@ -1231,10 +1228,10 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
                 >,
             >,
     {
-        println!(
-            "wrap_bn254_ initial proof length: {:?}",
-            serde_json::to_string(&shard_proof).unwrap().len()
-        );
+        // println!(
+        //     "wrap_bn254_ initial proof length: {:?}",
+        //     serde_json::to_string(&shard_proof).unwrap().len()
+        // );
 
         // let shape = ProofShape { chip_information: vec![("BaseAlu".to_string(), 0)] };
         // let shape = ProofShape {
@@ -1261,7 +1258,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         // let shard_proof = p3_proof_to_shardproof::<BabyBearPoseidon2>(p3_proof);
 
         let chip_proof_log_degree = shard_proof.opened_values.chips[0].log_degree;
-        println!("wrap_bn254_ program chip_proof_log_degree : {}", chip_proof_log_degree);
+        // println!("wrap_bn254_ program chip_proof_log_degree : {}", chip_proof_log_degree);
 
         let input = ProofWitnessValues { shard_proof };
 
@@ -1272,7 +1269,7 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
         // let program = self.p3_stark_wrap_program();
         let program = self.p3_stark_wrap_program_(air, &proof_shape);
         // let program = self.wrap_program();
-        println!("wrap_bn254_ program length : {:?}", program.instructions.len());
+        // println!("wrap_bn254_ program length : {:?}", program.instructions.len());
 
         // Run the compress program.
         let mut runtime = RecursionRuntime::<Val<InnerSC>, Challenge<InnerSC>, _>::new(
@@ -1306,10 +1303,10 @@ impl<C: SP1ProverComponents> SP1Prover<C> {
             .prove(&wrap_pk, vec![runtime.record], &mut wrap_challenger, opts.recursion_opts)
             .unwrap();
 
-        println!(
-            "wrap_bn254 wrap proof length: {:?}",
-            serde_json::to_string(&wrap_proof).unwrap().len()
-        );
+        // println!(
+        //     "wrap_bn254 wrap proof length: {:?}",
+        //     serde_json::to_string(&wrap_proof).unwrap().len()
+        // );
 
         let elapsed = time.elapsed();
         tracing::debug!("wrap proving time: {:?}", elapsed);

@@ -7,8 +7,6 @@ use p3_air::{Air, BaseAir};
 use p3_baby_bear::BabyBear;
 use p3_commit::{Mmcs, Pcs, PolynomialSpace, TwoAdicMultiplicativeCoset};
 use p3_field::{AbstractField, ExtensionField, Field, TwoAdicField};
-use p3_fri::FriProof;
-use p3_fri::TwoAdicFriPcsProof;
 use p3_matrix::{dense::RowMajorMatrix, Dimensions};
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -17,7 +15,6 @@ use sp1_recursion_compiler::{
     ir::{Builder, Config, Ext, ExtConst},
     prelude::Felt,
 };
-use sp1_recursion_core::DIGEST_SIZE;
 use sp1_stark::{
     air::InteractionScope, baby_bear_poseidon2::BabyBearPoseidon2, AirOpenedValues, Challenger,
     Chip, ChipOpenedValues, Dom, InnerChallenge, ProofShape, ShardCommitment, ShardOpenedValues,
@@ -26,7 +23,7 @@ use sp1_stark::{
 use sp1_stark::{air::MachineAir, StarkGenericConfig, StarkMachine, StarkVerifyingKey};
 
 use crate::{
-    challenger::{self, CanObserveVariable},
+    challenger::CanObserveVariable,
     fri::{dummy_hash, dummy_pcs_proof, PolynomialBatchShape, PolynomialShape},
     hash::{FieldHasher, FieldHasherVariable},
     BabyBearFriConfig, CircuitConfig, TwoAdicPcsMatsVariable, TwoAdicPcsProofVariable,
@@ -37,10 +34,6 @@ use crate::{
     domain::PolynomialSpaceVariable, fri::verify_two_adic_pcs, BabyBearFriConfigVariable,
     TwoAdicPcsRoundVariable, VerifyingKeyVariable,
 };
-
-use crate::witness::{WitnessWriter, Witnessable};
-use sp1_stark::Com;
-use sp1_stark::OpeningProof;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound(serialize = "ShardProof<SC>: Serialize, Dom<SC>: Serialize"))]
@@ -54,18 +47,18 @@ impl ProofWitnessValues<BabyBearPoseidon2> {
         machine: &StarkMachine<BabyBearPoseidon2, A>,
         shape: &ProofShape,
     ) -> Self {
-        println!("dummy_proof_witness_values");
+        // println!("dummy_proof_witness_values");
         // let (_, shard_proof) = dummy_vk_and_shard_proof(machine, shape);
 
         // WIP
         let chip = &machine.chips()[0];
         let log_degree = shape.chip_information[0].1;
-        println!(
-            "dummy chip.width() {} chip.quotinent_width() {} chip.log_quotient_degree() {}",
-            chip.width(),
-            chip.quotient_width(),
-            chip.log_quotient_degree()
-        );
+        // println!(
+        //     "dummy chip.width() {} chip.quotinent_width() {} chip.log_quotient_degree() {}",
+        //     chip.width(),
+        //     chip.quotient_width(),
+        //     chip.log_quotient_degree()
+        // );
         let local_main_batch_shape = vec![PolynomialShape { width: chip.width(), log_degree }];
         // TODO hardcoded quotinent shape. Need to fix
         let quotient_batch_shape = vec![PolynomialShape { width: 4, log_degree }, PolynomialShape { width: 4, log_degree }];
@@ -300,7 +293,6 @@ fn dummy_opened_values_<F: Field, EF: ExtensionField<F>, A: MachineAir<F>>(
     chip: &Chip<F, A>,
     log_degree: usize,
 ) -> ChipOpenedValues<EF> {
-    println!("dummy_opened_values_ log_degree {}", log_degree);
     let preprocessed_width = chip.preprocessed_width();
     let preprocessed = AirOpenedValues {
         local: vec![EF::zero(); preprocessed_width],
@@ -318,11 +310,11 @@ fn dummy_opened_values_<F: Field, EF: ExtensionField<F>, A: MachineAir<F>>(
     };
     let quotient_width = chip.quotient_width();
     let quotient = (0..quotient_width).map(|_| vec![EF::zero(); EF::D]).collect::<Vec<_>>();
-    println!(
-        "dummy_opened_values_ quotient_width {} quotinent.len {}",
-        quotient_width,
-        quotient.len()
-    );
+    // println!(
+    //     "dummy_opened_values_ quotient_width {} quotinent.len {}",
+    //     quotient_width,
+    //     quotient.len()
+    // );
 
     ChipOpenedValues {
         preprocessed,
@@ -631,7 +623,7 @@ where
         A: for<'a> Air<RecursiveVerifierConstraintFolder<'a, C>>,
     {
         let chips = machine.shard_chips_ordered(&proof.chip_ordering).collect::<Vec<_>>();
-        let chip_scopes = chips.iter().map(|chip| chip.commit_scope()).collect::<Vec<_>>();
+        let _chip_scopes = chips.iter().map(|chip| chip.commit_scope()).collect::<Vec<_>>();
 
         // let has_global_main_commit = chip_scopes.contains(&InteractionScope::Global);
 
@@ -639,7 +631,7 @@ where
             commitment,
             opened_values,
             opening_proof,
-            chip_ordering,
+            chip_ordering: _chip_ordering,
             public_values,
         } = proof;
 
@@ -665,12 +657,12 @@ where
         let log_quotient_degrees =
             chips.iter().map(|chip| chip.log_quotient_degree()).collect::<Vec<_>>();
 
-        println!(
-            "StarkVerifier::verify_shard_ chips.len() {} log_degrees.len() {:?} log_quotient_degrees {:?}",
-            chips.len(),
-            log_degrees,
-            log_quotient_degrees
-        );
+        // println!(
+        //     "StarkVerifier::verify_shard_ chips.len() {} log_degrees.len() {:?} log_quotient_degrees {:?}",
+        //     chips.len(),
+        //     log_degrees,
+        //     log_quotient_degrees
+        // );
 
         let trace_domains = log_degrees
             .iter()
@@ -678,9 +670,9 @@ where
             .collect::<Vec<_>>();
 
         let ShardCommitment {
-            global_main_commit,
+            global_main_commit: _global_main_commit,
             local_main_commit,
-            permutation_commit,
+            permutation_commit: _permutation_commit,
             quotient_commit,
         } = *commitment;
 
@@ -734,17 +726,16 @@ where
         //     })
         //     .collect::<Vec<_>>();
 
-        println!(
-            "verify_shard_ trace_domains.len() {} opened_values.chips.len {}",
-            trace_domains.len(),
-            opened_values.chips.len()
-        );
+        // println!(
+        //     "verify_shard_ trace_domains.len() {} opened_values.chips.len {}",
+        //     trace_domains.len(),
+        //     opened_values.chips.len()
+        // );
 
         let main_domains_points_and_opens = trace_domains
             .iter()
             .zip_eq(opened_values.chips.iter())
             .map(|(domain, values)| {
-                println!("main points and opens!!!!!!!!!!!!!!!");
                 TwoAdicPcsMatsVariable::<C> {
                     domain: *domain,
                     points: vec![zeta, domain.next_point_variable(builder, zeta)],
@@ -768,7 +759,6 @@ where
             .zip_eq(log_degrees)
             .zip_eq(log_quotient_degrees)
             .map(|((domain, log_degree), log_quotient_degree)| {
-                println!("quotient_chunk_domains!!!!!!!!!!!!!!!");
                 let quotient_degree = 1 << log_quotient_degree;
                 let quotient_domain =
                     domain.create_disjoint_domain(1 << (log_degree + log_quotient_degree));
@@ -782,7 +772,6 @@ where
             .iter()
             .zip_eq(quotient_chunk_domains.iter())
             .flat_map(|(values, qc_domains)| {
-                println!("quotient_domains_points_and_opens!!!!!!!!!!!!!!! values.len {} qc_domains.len() {}", values.quotient.len(), qc_domains.len());
                 values.quotient.iter().zip_eq(qc_domains).map(move |(values, q_domain)| {
                     TwoAdicPcsMatsVariable::<C> {
                         domain: *q_domain,
@@ -796,7 +785,7 @@ where
         // Split the main_domains_points_and_opens to the global and local chips.
         // let mut global_trace_points_and_openings = Vec::new();
         let mut local_trace_points_and_openings = Vec::new();
-        for (i, points_and_openings) in
+        for (_i, points_and_openings) in
             main_domains_points_and_opens.clone().into_iter().enumerate()
         {
             // let scope = chip_scopes[i];
@@ -838,7 +827,7 @@ where
         let rounds: Vec<TwoAdicPcsRoundVariable<C, SC>> = vec![local_main_round, quotient_round];
         // vec![global_main_round, local_main_round, perm_round, quotient_round];
 
-        println!("verify_shard_ query_proofs {}", opening_proof.fri_proof.query_proofs.len());
+        // println!("verify_shard_ query_proofs {}", opening_proof.fri_proof.query_proofs.len());
         // println!(
         //     "verify_shard_ query_proofs {}",
         //     serde_json::to_string_pretty(&opening_proof).unwrap()
